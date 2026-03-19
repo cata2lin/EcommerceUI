@@ -53,7 +53,7 @@ export default function Bestsellers() {
 
   // Image preview
   const [previewImage, setPreviewImage] = useState<{ src: string; x: number; y: number } | null>(null);
-  const previewTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const previewTimeout = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedKeywords(keywords); setPage(1); }, 300);
@@ -106,14 +106,14 @@ export default function Bestsellers() {
   };
 
   const showPreview = (src: string, e: React.MouseEvent) => {
-    clearTimeout(previewTimeout.current);
+    if (previewTimeout.current) clearTimeout(previewTimeout.current);
     previewTimeout.current = setTimeout(() => {
       setPreviewImage({ src, x: e.clientX + 20, y: e.clientY - 60 });
     }, 200);
   };
 
   const hidePreview = () => {
-    clearTimeout(previewTimeout.current);
+    if (previewTimeout.current) clearTimeout(previewTimeout.current);
     setPreviewImage(null);
   };
 

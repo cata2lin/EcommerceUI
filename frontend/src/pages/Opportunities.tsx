@@ -44,7 +44,7 @@ function SeasonalityBars({ data }: { data: number[] | null }) {
 
 export default function Opportunities() {
   const navigate = useNavigate();
-  const { refreshSidebar } = useSidebar();
+  const { refresh } = useSidebar();
   const [products, setProducts] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -94,12 +94,12 @@ export default function Opportunities() {
 
   const handleShortlist = async (p: Opportunity) => {
     setProducts(ps => ps.map(x => x.id === p.id ? { ...x, shortlisted: !x.shortlisted } : x));
-    try { await toggleShortlist(p.id); refreshSidebar(); } catch { loadData(); }
+    try { await toggleShortlist(p.id); refresh(); } catch { loadData(); }
   };
 
   const handleAddPipeline = async (id: number) => {
     setProducts(ps => ps.map(x => x.id === id ? { ...x, pipeline_status: 'New' } : x));
-    try { await moveToNewStatus(id); refreshSidebar(); } catch { loadData(); }
+    try { await moveToNewStatus(id); refresh(); } catch { loadData(); }
   };
 
   return (
