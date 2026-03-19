@@ -89,7 +89,7 @@ The backend will:
 - Schedule daily MV refresh at 8:00 AM
 - Serve the API at `http://localhost:8000`
 
-### 5. Frontend setup
+### 5. Frontend setup (Development)
 
 ```bash
 cd frontend
@@ -110,6 +110,80 @@ VALUES ('admin', '$2b$12$LJ3...(generate with passlib)');
 ```
 
 Or use the registration endpoint if available.
+
+---
+
+## Production Deployment (Linux Server)
+
+For deploying on a server (e.g., `bi.arona.ro`), you need to **build the frontend** so the API can serve everything on a single port.
+
+### Quick Deploy
+
+```bash
+# Clone and enter project
+git clone https://github.com/cata2lin/EcommerceUI.git
+cd EcommerceUI
+
+# Set up Python environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+nano .env  # Edit with your actual database URL, keys, etc.
+
+# Build frontend for production
+cd frontend
+npm install
+npm run build   # Outputs to api/frontend_dist/
+cd ..
+
+# Start the server
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+The app will be available at `http://your-server:8000` — both API and frontend served on the same port.
+
+### Or use the deploy script
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+### Running as a background service (systemd)
+
+Create `/etc/systemd/system/ecommerce.service`:
+
+```ini
+[Unit]
+Description=E-Commerce Intelligence Platform
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/EcommerceUI
+Environment=PATH=/root/EcommerceUI/venv/bin:/usr/bin
+ExecStart=/root/EcommerceUI/venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable ecommerce
+sudo systemctl start ecommerce
+sudo systemctl status ecommerce  # Check status
+sudo journalctl -u ecommerce -f  # View logs
+```
 
 ## Project Structure
 
