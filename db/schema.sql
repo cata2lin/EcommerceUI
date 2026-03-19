@@ -8,6 +8,12 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
+CREATE TEXT SEARCH CONFIGURATION romanian_unaccent ( COPY = simple );
+
+ALTER TEXT SEARCH CONFIGURATION romanian_unaccent
+    ALTER MAPPING FOR hword, hword_part, word
+    WITH unaccent, simple;
+
 -- ─── Table: application_settings ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS application_settings (
     id SERIAL,
