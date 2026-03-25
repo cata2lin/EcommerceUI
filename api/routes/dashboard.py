@@ -62,7 +62,7 @@ async def get_dashboard(
     min_score: Optional[int] = Query(None),
     max_score: Optional[int] = Query(None),
     grade_filter: Optional[str] = Query(None),
-    exclude_stale: Optional[bool] = Query(True),
+    exclude_stale: Optional[bool] = Query(False),
     sort_by: Optional[str] = Query("avg_30d"),
     sort_dir: Optional[str] = Query("desc"),
     page: int = Query(1, ge=1),

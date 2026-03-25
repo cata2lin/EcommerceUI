@@ -2,7 +2,7 @@
  * ProductDetail — Detailed product view with Chart.js stock/price charts,
  * KPI cards, date range filters, and Similar Products table.
  */
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,7 +11,7 @@ import {
   Filler, Tooltip, Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { fetchProduct, fetchSimilarProducts, moveToNewStatus, updateProductStatus } from '../api';
+import { fetchProduct, fetchSimilarProducts, moveToNewStatus, updateProductStatus, toggleShortlist } from '../api';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -50,6 +50,8 @@ export default function ProductDetail() {
   const queryClient = useQueryClient();
   const [stockRange, setStockRange] = useState<DateRange>('all');
   const [priceRange, setPriceRange] = useState<DateRange>('all');
+  const [showSimilar, setShowSimilar] = useState(false);
+  const [shortlisted, setShortlisted] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['product', id],
@@ -60,11 +62,16 @@ export default function ProductDetail() {
   const { data: similarData, isLoading: similarLoading } = useQuery({
     queryKey: ['similar-products', id],
     queryFn: () => fetchSimilarProducts(Number(id)),
-    enabled: !!id,
+    enabled: !!id && showSimilar,
   });
 
   const product = data?.data;
   const similarProducts: SimilarProduct[] = similarData?.data?.products || [];
+
+  // Sync shortlisted state from product data
+  useEffect(() => {
+    if (product?.shortlisted != null) setShortlisted(product.shortlisted);
+  }, [product?.shortlisted]);
 
   const filteredStock = useMemo(
     () => filterByRange(product?.stock_history || [], stockRange),
@@ -185,45 +192,65 @@ export default function ProductDetail() {
           <h1 style={{ fontSize: '1.25rem' }}>{product.name || `Product #${id}`}</h1>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={async () => {
+              setShortlisted(prev => !prev);
+              try { await toggleShortlist(Number(id)); } catch { setShortlisted(prev => !prev); }
+            }}
+            title={shortlisted ? 'Remove from watchlist' : 'Add to watchlist'}
+            style={{ fontSize: '1.1rem', color: shortlisted ? '#ef4444' : undefined }}
+          >
+            {shortlisted ? '♥' : '♡'}
+          </button>
           <a href={product.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">Visit Store ↗</a>
           <button className="btn btn-primary btn-sm" onClick={() => navigate(`/product/${id}/pipeline-details`)}>Pipeline Details →</button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4" style={{ marginBottom: 'var(--spacing-8)' }}>
-        <div className="card" style={{ padding: 'var(--spacing-5)' }}>
-          <div className="text-xs text-muted" style={{ marginBottom: 4 }}>Current Stock</div>
-          <div className="text-mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product.current_stock?.toLocaleString() ?? '—'}</div>
+      {/* Product Hero — Large image + stats */}
+      <div className="card flex gap-8" style={{ marginBottom: 'var(--spacing-8)', padding: 'var(--spacing-6)', alignItems: 'flex-start' }}>
+        {/* Large Product Image */}
+        <div style={{
+          width: 300, minWidth: 300, height: 300,
+          borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+          background: 'var(--color-bg-hover)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          {product.image ? (
+            <img src={product.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          ) : (
+            <span style={{ fontSize: '3rem', color: 'var(--color-text-muted)' }}>?</span>
+          )}
         </div>
-        <div className="card" style={{ padding: 'var(--spacing-5)' }}>
-          <div className="text-xs text-muted" style={{ marginBottom: 4 }}>Current Price</div>
-          <div className="text-mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product.current_price ? `${product.current_price.toFixed(2)} RON` : '—'}</div>
-        </div>
-        <div className="card" style={{ padding: 'var(--spacing-5)' }}>
-          <div className="text-xs text-muted" style={{ marginBottom: 4 }}>Store</div>
-          <div style={{ fontWeight: 600 }}>{product.parser_name || '—'}</div>
-          <div className="text-xs text-muted">{product.vendor || '—'}</div>
-        </div>
-        <div className="card" style={{ padding: 'var(--spacing-5)' }}>
-          <div className="text-xs text-muted" style={{ marginBottom: 4 }}>Pipeline Status</div>
-          <span className={`badge ${product.pipeline_status ? 'badge-info' : 'badge-neutral'}`}>
-            {product.pipeline_status || 'None'}
-          </span>
-        </div>
-      </div>
 
-      {/* Product Image + Info */}
-      {product.image && (
-        <div className="card flex items-center gap-6" style={{ marginBottom: 'var(--spacing-8)', padding: 'var(--spacing-5)' }}>
-          <img src={product.image} alt="" style={{ width: 100, height: 100, borderRadius: 'var(--radius-lg)', objectFit: 'cover' }} />
+        {/* Product Stats — vertical list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-2)' }}>
           <div>
-            <div className="text-sm text-muted">
-              {(product.stock_history?.length || 0)} stock records · {(product.price_history?.length || 0)} price records
-            </div>
+            <div className="text-xs" style={{ marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Stock</div>
+            <div className="text-mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product.current_stock?.toLocaleString() ?? '—'}</div>
+          </div>
+          <div>
+            <div className="text-xs" style={{ marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Price</div>
+            <div className="text-mono" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product.current_price ? `${product.current_price.toFixed(2)} RON` : '—'}</div>
+          </div>
+          <div>
+            <div className="text-xs" style={{ marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Store</div>
+            <div style={{ fontWeight: 600 }}>{product.parser_name || '—'}</div>
+            {product.vendor && <div className="text-xs">{product.vendor}</div>}
+          </div>
+          <div>
+            <div className="text-xs" style={{ marginBottom: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pipeline Status</div>
+            <span className={`badge ${product.pipeline_status ? 'badge-info' : 'badge-neutral'}`}>
+              {product.pipeline_status || 'None'}
+            </span>
+          </div>
+          <div className="text-xs" style={{ marginTop: 'var(--spacing-2)' }}>
+            {(product.stock_history?.length || 0)} stock records · {(product.price_history?.length || 0)} price records
           </div>
         </div>
-      )}
+      </div>
 
       {/* Charts */}
       <div className="grid grid-cols-2 gap-6">
@@ -256,17 +283,23 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* Similar Products */}
+      {/* Similar Products — on demand */}
       <div className="card" style={{ marginTop: 'var(--spacing-8)', padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: 'var(--spacing-5) var(--spacing-6) var(--spacing-3)' }}>
           <div className="flex items-center gap-3">
             <h3 style={{ margin: 0 }}>Similar Products</h3>
-            <span className="text-sm text-muted">
-              {similarProducts.length} found by name similarity
-            </span>
+            {!showSimilar ? (
+              <button className="btn btn-primary btn-sm" onClick={() => setShowSimilar(true)}>
+                🔍 Find Similar Products
+              </button>
+            ) : (
+              <span className="text-sm">
+                {similarLoading ? 'Searching...' : `${similarProducts.length} found by name similarity`}
+              </span>
+            )}
           </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        {showSimilar && (
           <table className="data-table">
             <thead>
               <tr>
@@ -307,7 +340,7 @@ export default function ProductDetail() {
                   <td>
                     <div className="flex items-center gap-2">
                       <span className="badge" style={{
-                        background: GRADE_COLORS[sp.grade] || '#64748b',
+                        background: GRADE_COLORS[sp.grade] || '#334155',
                         color: '#fff',
                         fontWeight: 700,
                         fontSize: '0.7rem',
@@ -332,7 +365,7 @@ export default function ProductDetail() {
                           width: `${Math.min(sp.similarity * 100, 100)}%`,
                           height: '100%',
                           borderRadius: 3,
-                          background: sp.similarity > 0.5 ? '#22c55e' : sp.similarity > 0.3 ? '#eab308' : '#94a3b8',
+                          background: sp.similarity > 0.5 ? '#22c55e' : sp.similarity > 0.3 ? '#eab308' : '#64748b',
                         }} />
                       </div>
                       <span className="text-xs text-muted">{(sp.similarity * 100).toFixed(0)}%</span>
@@ -356,7 +389,7 @@ export default function ProductDetail() {
               ))}
             </tbody>
           </table>
-        </div>
+        )}
       </div>
     </div>
   );

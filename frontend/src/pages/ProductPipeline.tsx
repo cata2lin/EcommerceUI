@@ -434,8 +434,8 @@ export default function ProductPipeline() {
                   },
                 },
                 scales: {
-                  x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-                  y: { min: 0, max: 100, grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#94a3b8', stepSize: 25, font: { size: 10 } } },
+                  x: { grid: { display: false }, ticks: { color: '#334155', font: { size: 11 } } },
+                  y: { min: 0, max: 100, grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#334155', stepSize: 25, font: { size: 10 } } },
                 },
               }}
             />
@@ -791,8 +791,8 @@ export default function ProductPipeline() {
                           },
                         },
                         scales: {
-                          x: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#94a3b8', maxRotation: 0, maxTicksLimit: 10, font: { size: 11 } } },
-                          y: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+                          x: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#334155', maxRotation: 0, maxTicksLimit: 10, font: { size: 11 } } },
+                          y: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#334155', font: { size: 11 } } },
                         },
                       }}
                     />
@@ -841,8 +841,8 @@ export default function ProductPipeline() {
                           },
                         },
                         scales: {
-                          x: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#94a3b8', maxRotation: 0, maxTicksLimit: 10, font: { size: 11 } } },
-                          y: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+                          x: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#334155', maxRotation: 0, maxTicksLimit: 10, font: { size: 11 } } },
+                          y: { grid: { color: 'rgba(148,163,184,0.06)' }, ticks: { color: '#334155', font: { size: 11 } } },
                         },
                       }}
                     />

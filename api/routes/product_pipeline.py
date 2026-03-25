@@ -136,6 +136,7 @@ async def get_pipeline_details(
             "avg_daily_sales_30d": float(ads_row.avg_daily) if ads_row else 0,
             "gross_margin": gross_margin,
         },
+        "assigned_category_ids": [c.id for c in categories],
         "categories": [{"id": c.id, "name": c.name, "code": c.code} for c in categories],
         "all_categories": [{"id": c.id, "name": c.name, "code": c.code} for c in all_categories],
         "all_groups": [{"id": g.id, "name": g.name} for g in all_groups],
@@ -185,14 +186,15 @@ async def save_pipeline_details(
         if field in body:
             setattr(detail, field, body[field])
 
-    # Update categories (M2M)
-    if "category_ids" in body:
+    # Update categories (M2M) — accept both field names
+    cat_ids = body.get("category_ids") or body.get("assigned_category_ids")
+    if cat_ids is not None:
         db.execute(
             product_assigned_categories.delete().where(
                 product_assigned_categories.c.product_id == product_id
             )
         )
-        for cat_id in body["category_ids"]:
+        for cat_id in cat_ids:
             db.execute(
                 product_assigned_categories.insert().values(
                     product_id=product_id, category_id=cat_id
@@ -200,9 +202,9 @@ async def save_pipeline_details(
             )
 
         # Auto-generate SKU on first category assignment
-        if not detail.sku and body["category_ids"]:
+        if not detail.sku and cat_ids:
             cat = db.query(ProductCategory).filter(
-                ProductCategory.id == body["category_ids"][0]
+                ProductCategory.id == cat_ids[0]
             ).first()
             if cat and cat.code:
                 detail.sku = f"GD-{cat.code}-{product_id}"
@@ -223,15 +225,25 @@ async def save_pipeline_details(
     if "group_id" in body:
         product.group_id = body.get("group_id")
 
-    # Status transition
-    new_status = body.get("new_status")
+    # Status transition — accept both field names
+    new_status = body.get("new_status") or body.get("new_pipeline_status")
     if new_status:
         product.pipeline_status = new_status
+
+    # Save monthly_sales_index if provided
+    if "monthly_sales_index" in body:
+        detail.monthly_sales_index = body["monthly_sales_index"]
 
     db.commit()
     cache_invalidate("sidebar")
 
-    return {"message": "Saved", "pipeline_status": product.pipeline_status, "sku": detail.sku, "barcode": detail.barcode}
+    return {
+        "message": "Saved",
+        "updated_status": product.pipeline_status,
+        "pipeline_status": product.pipeline_status,
+        "sku": detail.sku,
+        "barcode": detail.barcode,
+    }
 
 
 # ─── Seasonality Generation ─────────────────────────────────────────
@@ -329,12 +341,13 @@ async def autofill_taric(
         raise HTTPException(status_code=404, detail="Product not found")
 
     if not GEMINI_API_KEY:
-        raise HTTPException(status_code=500, detail="Gemini API key not configured")
+        raise HTTPException(status_code=500, detail="Gemini API key not configured. Set GEMINI_API_KEY in .env file.")
 
-    from google import genai
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    try:
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
 
-    prompt = f"""You are an EU TARIC customs classification expert.
+        prompt = f"""You are an EU TARIC customs classification expert.
 For the product "{product.name}" being imported from China to Romania (EU):
 1. Provide the most accurate 10-digit HS/TARIC code
 2. Provide the applicable customs duty rate as a percentage
@@ -342,30 +355,62 @@ For the product "{product.name}" being imported from China to Romania (EU):
 Return ONLY a JSON object like: {{"hs_code": "8523511000", "customs_rate": 3.7}}
 No explanation, just the JSON."""
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-lite",
-        contents=prompt,
-    )
-    text = response.text.strip()
+        # Try multiple models with fallback
+        models = ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash"]
+        last_error = None
+        response = None
 
-    match = re.search(r'\{[^}]+\}', text)
-    if not match:
-        raise HTTPException(status_code=500, detail="Could not parse AI response")
+        for model_name in models:
+            try:
+                response = await client.aio.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+                break
+            except Exception as model_err:
+                last_error = model_err
+                err_str = str(model_err)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    continue
+                raise
 
-    data = json.loads(match.group())
+        if response is None:
+            raise HTTPException(
+                status_code=429,
+                detail=f"All AI models are rate-limited. Please try again in a few minutes. Last error: {str(last_error)[:200]}"
+            )
 
-    # Save
-    detail = db.query(ProductPipelineDetail).filter(
-        ProductPipelineDetail.product_id == product_id
-    ).first()
-    if not detail:
-        detail = ProductPipelineDetail(product_id=product_id)
-        db.add(detail)
-    detail.hs_code = str(data.get("hs_code", ""))
-    detail.customs_rate_percentage = float(data.get("customs_rate", 0))
-    db.commit()
+        raw_text = response.text.strip()
 
-    return {"hs_code": detail.hs_code, "customs_rate_percentage": float(detail.customs_rate_percentage)}
+        match = re.search(r'\{[^}]+\}', raw_text)
+        if not match:
+            raise HTTPException(status_code=500, detail=f"Could not parse AI response: {raw_text[:200]}")
+
+        data = json.loads(match.group())
+
+        # Save
+        detail = db.query(ProductPipelineDetail).filter(
+            ProductPipelineDetail.product_id == product_id
+        ).first()
+        if not detail:
+            detail = ProductPipelineDetail(product_id=product_id)
+            db.add(detail)
+        detail.hs_code = str(data.get("hs_code", ""))
+        detail.customs_rate_percentage = float(data.get("customs_rate", 0))
+        db.commit()
+
+        return {
+            "hs_code": detail.hs_code,
+            "customs_rate_percentage": float(detail.customs_rate_percentage),
+            "message": f"TARIC autofilled: HS {detail.hs_code}, Customs {detail.customs_rate_percentage}%",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"TARIC autofill failed: {str(e)}")
 
 
 # ─── Inline Key Data Edit ────────────────────────────────────────────
@@ -476,8 +521,17 @@ async def get_pipeline_status_view(
     # Sort mapping
     safe_sort = {
         "id": "p.id", "title": "COALESCE(ppd.title, p.name)", "parser": "par.name",
+        "parser_name": "par.name",
         "group": "pg.name", "retail_price": "ppd.retail_price",
-        "cogs_usd": "ppd.cogs_usd", "margin": "ppd.retail_price",
+        "cogs_usd": "ppd.cogs_usd",
+        "margin": f"""CASE WHEN ppd.retail_price > 0 AND ppd.cogs_usd > 0 THEN
+            ((ppd.retail_price / (1 + {vat_rate} / 100.0)) - ((COALESCE(ppd.cogs_usd,0) + COALESCE(ppd.transport_usd,0)) * (1 + COALESCE(ppd.customs_rate_percentage,0) / 100.0) * {usd_to_ron}))
+            / (ppd.retail_price / (1 + {vat_rate} / 100.0)) * 100
+            ELSE 0 END""",
+        "gross_margin": f"""CASE WHEN ppd.retail_price > 0 AND ppd.cogs_usd > 0 THEN
+            ((ppd.retail_price / (1 + {vat_rate} / 100.0)) - ((COALESCE(ppd.cogs_usd,0) + COALESCE(ppd.transport_usd,0)) * (1 + COALESCE(ppd.customs_rate_percentage,0) / 100.0) * {usd_to_ron}))
+            / (ppd.retail_price / (1 + {vat_rate} / 100.0)) * 100
+            ELSE 0 END""",
     }
     sort_col = safe_sort.get(sort_by, "p.id")
     direction = "DESC" if sort_dir.lower() == "desc" else "ASC"

@@ -260,7 +260,7 @@ export default function Bestsellers() {
       <style>{`
         .rank-badge { display: inline-block; min-width: 36px; text-align: center; }
         .rank-gold { color: #f59e0b; }
-        .rank-silver { color: #94a3b8; }
+        .rank-silver { color: #64748b; }
         .bs-preview {
           position: fixed; z-index: 1000; pointer-events: none;
           width: 200px; height: 200px; border-radius: var(--radius-lg);

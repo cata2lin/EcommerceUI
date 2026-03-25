@@ -2,8 +2,8 @@
  * Dashboard — Primary product grid with 8 filters, 12 sortable columns,
  * inline status dropdown, shortlist heart, pagination, and refresh.
  */
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   fetchDashboard, toggleShortlist, updateProductStatus,
   moveToNewStatus, refreshDashboard
@@ -78,7 +78,7 @@ const SORTABLE_COLUMNS = [
   { key: 'avg_30d', label: 'Avg 30D' },
   { key: 'price', label: 'Price' },
   { key: 'score', label: 'Score' },
-  { key: 'last_updated', label: 'Last Updated' },
+  { key: 'last_updated', label: 'Updated' },
 ];
 
 const UPDATED_WITHIN_OPTIONS = [
@@ -132,6 +132,8 @@ function relativeTime(iso: string | null): string {
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { refresh: refreshSidebar } = useSidebar();
+  const navigate = useNavigate();
+  const scrollRestoredRef = useRef(false);
 
   // Data
   const [products, setProducts] = useState<Product[]>([]);
@@ -157,7 +159,7 @@ export default function Dashboard() {
     max_price: searchParams.get('max_price') || '',
     min_stock: searchParams.get('min_stock') || '',
     max_stock: searchParams.get('max_stock') || '',
-    exclude_stale: searchParams.get('exclude_stale') !== 'false',
+    exclude_stale: searchParams.get('exclude_stale') === 'true',
     min_avg_30d: searchParams.get('min_avg_30d') || '',
     max_avg_30d: searchParams.get('max_avg_30d') || '',
     min_sold: searchParams.get('min_sold') || '',
@@ -204,11 +206,11 @@ export default function Dashboard() {
           next.delete(k);
         }
       }
-      // Handle exclude_stale
+      // Handle exclude_stale (default is false / unchecked)
       if (form.exclude_stale) {
-        next.delete('exclude_stale'); // true is default
+        next.set('exclude_stale', 'true');
       } else {
-        next.set('exclude_stale', 'false');
+        next.delete('exclude_stale'); // false is default
       }
       return next;
     }, { replace: true });
@@ -217,7 +219,7 @@ export default function Dashboard() {
   const clearFilters = () => {
     const empty = {
       name_filter: '', vendor_filter: '', pipeline_status_filter: '', sales_ranking_filter: '',
-      min_price: '', max_price: '', min_stock: '', max_stock: '', exclude_stale: true,
+      min_price: '', max_price: '', min_stock: '', max_stock: '', exclude_stale: false,
       min_avg_30d: '', max_avg_30d: '', min_sold: '', max_sold: '',
       updated_within_days: '', min_score: '', grade_filter: '',
     };
@@ -291,6 +293,26 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Restore scroll position after data loads
+  useEffect(() => {
+    if (!loading && products.length > 0 && !scrollRestoredRef.current) {
+      const saved = sessionStorage.getItem('dashboard_scroll');
+      if (saved) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, parseInt(saved, 10));
+          sessionStorage.removeItem('dashboard_scroll');
+        });
+      }
+      scrollRestoredRef.current = true;
+    }
+  }, [loading, products]);
+
+  /** Save scroll position before navigating to a product */
+  const navigateToProduct = (path: string) => {
+    sessionStorage.setItem('dashboard_scroll', String(window.scrollY));
+    navigate(path);
+  };
+
   const handleSort = (key: string) => {
     if (sortBy === key) {
       updateParams({ sort_dir: sortDir === 'asc' ? 'desc' : 'asc', page: '1' });
@@ -341,16 +363,28 @@ export default function Dashboard() {
   };
 
   // Pagination helpers
+  const [goToPage, setGoToPage] = useState('');
+
   const renderPagination = () => {
     if (totalPages <= 1) return null;
     const pages: (number | string)[] = [];
+    const range = 3; // show ±3 pages around current
     for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
+      if (i === 1 || i === totalPages || (i >= page - range && i <= page + range)) {
         pages.push(i);
       } else if (pages[pages.length - 1] !== '...') {
         pages.push('...');
       }
     }
+
+    const handleGoTo = () => {
+      const target = parseInt(goToPage, 10);
+      if (target >= 1 && target <= totalPages) {
+        setPage(target);
+        setGoToPage('');
+      }
+    };
+
     return (
       <div className="dash-pagination">
         <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
@@ -363,7 +397,18 @@ export default function Dashboard() {
             )
           ))}
         </div>
-        <span className="text-xs text-muted">Page {page} of {totalPages}</span>
+        <span className="text-xs">Page {page} of {totalPages}</span>
+        <div className="dash-goto">
+          <input
+            className="input" type="number" min={1} max={totalPages}
+            placeholder="Go to"
+            value={goToPage}
+            onChange={e => setGoToPage(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleGoTo(); }}
+            style={{ width: 64, fontSize: '0.75rem', padding: '4px 8px', minHeight: 28 }}
+          />
+          <button className="btn btn-ghost btn-sm" onClick={handleGoTo}>Go</button>
+        </div>
         <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
       </div>
     );
@@ -458,7 +503,7 @@ export default function Dashboard() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: 50 }}></th>
+                <th style={{ width: 58 }}></th>
                 {SORTABLE_COLUMNS.map(col => (
                   <th
                     key={col.key}
@@ -497,9 +542,9 @@ export default function Dashboard() {
                   </td>
                   {/* Name */}
                   <td>
-                    <Link className="dash-product-link" to={`/product/${product.id}`}>
+                    <a className="dash-product-link" onClick={() => navigateToProduct(`/product/${product.id}`)} style={{ cursor: 'pointer' }}>
                       {product.name}
-                    </Link>
+                    </a>
                   </td>
                   {/* Store */}
                   <td className="text-sm text-muted">{product.parser_name}</td>
@@ -564,12 +609,12 @@ export default function Dashboard() {
                       >
                         {product.shortlisted ? '♥' : '♡'}
                       </button>
-                      <Link className="btn btn-ghost btn-sm" to={`/product/${product.id}`} title="View details">
+                      <button className="btn btn-ghost btn-sm" onClick={() => navigateToProduct(`/product/${product.id}`)} title="View details">
                         👁
-                      </Link>
-                      <Link className="btn btn-ghost btn-sm" to={`/product/${product.id}/pipeline-details`} title="Pipeline details">
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => navigateToProduct(`/product/${product.id}/pipeline-details`)} title="Pipeline details">
                         📋
-                      </Link>
+                      </button>
                       <button className="btn btn-ghost btn-sm" onClick={() => handleAddToPipeline(product.id)} title="Add to pipeline (New)">
                           +
                       </button>

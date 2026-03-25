@@ -52,26 +52,65 @@
   overflow-x: auto;
 }
 
-/* Force table to fit within container */
+/* Force table to fit within container — fixed layout lets Name absorb free space */
 .dash-table-container .data-table {
   width: 100%;
+  table-layout: fixed;
 }
 
-/* Column widths — use max-width so content doesn't overlap */
+/* Column widths — compact columns have explicit widths, Name gets the rest */
 .dash-table-container .data-table th,
 .dash-table-container .data-table td {
   white-space: nowrap;
   padding: var(--spacing-2) var(--spacing-2);
   font-size: 0.8rem;
 }
+.dash-table-container .data-table th {
+  font-size: 0.64rem;
+}
+/* Image */
 .dash-table-container .data-table th:nth-child(1),
-.dash-table-container .data-table td:nth-child(1) { width: 36px; }
-.dash-table-container .data-table th:nth-child(2),
-.dash-table-container .data-table td:nth-child(2) { max-width: 150px; }
+.dash-table-container .data-table td:nth-child(1) { width: 58px; }
+/* Name — no explicit width so it fills remaining space */
+/* Store */
 .dash-table-container .data-table th:nth-child(3),
-.dash-table-container .data-table td:nth-child(3) { max-width: 80px; }
+.dash-table-container .data-table td:nth-child(3) { width: 90px; }
+/* Vendor */
 .dash-table-container .data-table th:nth-child(4),
-.dash-table-container .data-table td:nth-child(4) { max-width: 70px; }
+.dash-table-container .data-table td:nth-child(4) { width: 80px; }
+/* Status — fit to longest status text */
+.dash-table-container .data-table th:nth-child(5),
+.dash-table-container .data-table td:nth-child(5) { width: 110px; }
+/* Rank */
+.dash-table-container .data-table th:nth-child(6),
+.dash-table-container .data-table td:nth-child(6) { width: 55px; }
+/* Stock */
+.dash-table-container .data-table th:nth-child(7),
+.dash-table-container .data-table td:nth-child(7) { width: 60px; }
+/* Sold */
+.dash-table-container .data-table th:nth-child(8),
+.dash-table-container .data-table td:nth-child(8) { width: 70px; }
+/* Avg 1D */
+.dash-table-container .data-table th:nth-child(9),
+.dash-table-container .data-table td:nth-child(9) { width: 62px; }
+/* Avg 7D */
+.dash-table-container .data-table th:nth-child(10),
+.dash-table-container .data-table td:nth-child(10) { width: 62px; }
+/* Avg 30D */
+.dash-table-container .data-table th:nth-child(11),
+.dash-table-container .data-table td:nth-child(11) { width: 72px; }
+/* Price */
+.dash-table-container .data-table th:nth-child(12),
+.dash-table-container .data-table td:nth-child(12) { width: 62px; }
+/* Score */
+.dash-table-container .data-table th:nth-child(13),
+.dash-table-container .data-table td:nth-child(13) { width: 55px; }
+/* Updated — compact, fits "7h ago" / "14d ago" */
+.dash-table-container .data-table th:nth-child(14),
+.dash-table-container .data-table td:nth-child(14) { width: 68px; }
+/* Actions */
+.dash-table-container .data-table th:nth-child(15),
+.dash-table-container .data-table td:nth-child(15) { width: 110px; }
 
 /* All td text overflow handling */
 .dash-table-container .data-table td {
@@ -88,8 +127,8 @@
 
 /* Product thumbnail */
 .dash-thumb {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--color-bg-hover);
@@ -112,7 +151,7 @@
   font-size: 0.75rem;
 }
 
-/* Product name link */
+/* Product name link — fills available column width */
 .dash-product-link {
   background: none;
   border: none;
@@ -122,7 +161,6 @@
   cursor: pointer;
   text-align: left;
   padding: 0;
-  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -235,4 +273,10 @@
 .dash-page-ellipsis {
   color: var(--color-text-muted);
   padding: 0 4px;
+}
+
+.dash-goto {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
 }
