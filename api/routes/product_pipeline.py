@@ -209,17 +209,17 @@ async def save_pipeline_details(
             if cat and cat.code:
                 detail.sku = f"GD-{cat.code}-{product_id}"
 
-            # Auto-generate barcode (EAN-13)
+            # Auto-generate barcode (EAN-13: 12 data + 1 check = 13)
             if not detail.barcode:
-                prefix = "5941237"
-                padded_id = str(product_id).zfill(5)
-                code = prefix + padded_id
+                prefix = "5941237"  # 7-digit company prefix
+                id_part = str(product_id % 100000).zfill(5)  # always 5 digits
+                code = prefix + id_part  # always 12 digits
                 digits = [int(d) for d in code]
                 checksum = 0
                 for i, d in enumerate(digits):
                     checksum += d * (1 if i % 2 == 0 else 3)
                 check_digit = (10 - (checksum % 10)) % 10
-                detail.barcode = code + str(check_digit)
+                detail.barcode = code + str(check_digit)  # always 13 digits
 
     # Update group
     if "group_id" in body:
