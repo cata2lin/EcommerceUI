@@ -18,6 +18,7 @@ from api.routes import auth, sidebar, dashboard
 from api.routes import product_detail, product_pipeline
 from api.routes import bestsellers, opportunities, analytics
 from api.routes import parser_status, config
+from api.routes import deployments
 from api.routes import system_monitoring
 
 import asyncio
@@ -71,6 +72,7 @@ app.include_router(analytics.router, tags=["Analytics"])
 app.include_router(parser_status.router, tags=["Parser Status"])
 app.include_router(config.router, tags=["Configuration"])
 app.include_router(system_monitoring.router, tags=["System Monitoring"])
+app.include_router(deployments.router, tags=["Deployments"])
 
 
 # ─── Daily 8 AM Background MV Refresh ───────────────────────────────

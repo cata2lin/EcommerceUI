@@ -18,6 +18,7 @@ import Analytics from './pages/Analytics';
 import ParserStatus from './pages/ParserStatus';
 import Config from './pages/Config';
 import SystemMonitoring from './pages/SystemMonitoring';
+import Deployments from './pages/Deployments';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="/parser-status" element={<ParserStatus />} />
         <Route path="/config" element={<Config />} />
         <Route path="/system" element={<SystemMonitoring />} />
+        <Route path="/deployments" element={<Deployments />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

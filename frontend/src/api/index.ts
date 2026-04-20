@@ -145,4 +145,14 @@ export const fetchSystemMonitoring = () =>
 export const refreshSingleMV = (mvName: string) =>
   api.post(`/api/system/refresh-mv/${mvName}`);
 
+// ─── Deployments ──────────────────────────────────────────
+export const fetchDeployments = () =>
+  api.get('/api/deployments');
+
+export const fetchDeployLiveLog = (lines: number = 100) =>
+  api.get('/api/deployments/live-log', { params: { lines } });
+
+export const triggerDeploy = () =>
+  api.post('/api/deployments/trigger');
+
 export default api;

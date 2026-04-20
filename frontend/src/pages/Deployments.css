@@ -1,0 +1,408 @@
+/* ─── Deployments Page ───────────────────────────────────── */
+.dep-page {
+  padding: var(--spacing-6);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dep-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-6);
+  gap: var(--spacing-3);
+}
+
+.dep-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.dep-header-actions {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+/* ─── Stats Row ─────────────────────────────────────────── */
+.dep-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.dep-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-5) var(--spacing-4);
+  text-align: center;
+}
+
+.dep-stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-2);
+}
+
+.dep-stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dep-stat-value.success { color: #22c55e; }
+.dep-stat-value.failed { color: #ef4444; }
+.dep-stat-value.rate { color: var(--color-accent-primary); }
+
+/* ─── Tab Bar ───────────────────────────────────────────── */
+.dep-tabs {
+  display: flex;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-5);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.dep-tab {
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.dep-tab:hover {
+  color: var(--color-text-primary);
+}
+
+.dep-tab.active {
+  color: var(--color-accent-primary);
+  border-bottom-color: var(--color-accent-primary);
+}
+
+/* ─── Deployment Timeline ───────────────────────────────── */
+.dep-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.dep-entry {
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.dep-entry:hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dep-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--spacing-5);
+  cursor: pointer;
+  user-select: none;
+  gap: var(--spacing-4);
+}
+
+.dep-entry-header:hover {
+  background: var(--color-bg-hover);
+}
+
+.dep-entry-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.dep-entry-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  flex-shrink: 0;
+}
+
+/* Status badge */
+.dep-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.dep-status.success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.dep-status.failed,
+.dep-status.rolled_back {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.dep-status.skipped {
+  background: rgba(113, 113, 122, 0.12);
+  color: #71717a;
+}
+
+.dep-status.unknown {
+  background: rgba(234, 179, 8, 0.12);
+  color: #eab308;
+}
+
+.dep-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.dep-status.success .dep-status-dot {
+  animation: dep-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dep-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Commit info */
+.dep-commits {
+  font-family: var(--font-mono, 'Fira Code', monospace);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dep-commit-hash {
+  background: var(--color-bg-elevated);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.dep-commit-arrow {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+/* Timestamp + duration */
+.dep-time {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.dep-duration {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-elevated);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.dep-expand-icon {
+  transition: transform 0.2s ease;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.dep-expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* ─── Expanded Details ──────────────────────────────────── */
+.dep-details {
+  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-4) var(--spacing-5);
+  animation: dep-slide-down 0.2s ease;
+}
+
+@keyframes dep-slide-down {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 2000px;
+  }
+}
+
+/* Steps */
+.dep-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.dep-steps-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-2);
+}
+
+.dep-step {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+}
+
+.dep-step-number {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.dep-step-text {
+  color: var(--color-text-secondary);
+}
+
+.dep-step-time {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+/* Errors section */
+.dep-errors {
+  margin-top: var(--spacing-3);
+}
+
+.dep-errors-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ef4444;
+  margin-bottom: var(--spacing-2);
+}
+
+.dep-error-line {
+  padding: var(--spacing-2) var(--spacing-3);
+  background: rgba(239, 68, 68, 0.06);
+  border-left: 3px solid #ef4444;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  color: #ef4444;
+  margin-bottom: var(--spacing-2);
+  word-break: break-all;
+}
+
+/* ─── Live Log Tab ──────────────────────────────────────── */
+.dep-live-log {
+  background: #0d1117;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-4);
+  overflow: auto;
+  max-height: 600px;
+  font-family: var(--font-mono, 'Fira Code', monospace);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.dep-log-line {
+  color: #8b949e;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.dep-log-line.success {
+  color: #3fb950;
+}
+
+.dep-log-line.error {
+  color: #f85149;
+}
+
+.dep-log-line.info {
+  color: #58a6ff;
+}
+
+.dep-log-line.header {
+  color: #d2a8ff;
+  font-weight: 600;
+}
+
+/* ─── Skeleton ──────────────────────────────────────────── */
+.dep-skeleton {
+  padding: var(--spacing-6);
+  min-height: 80px;
+}
+
+/* ─── Empty State ───────────────────────────────────────── */
+.dep-empty {
+  text-align: center;
+  padding: var(--spacing-8);
+  color: var(--color-text-muted);
+}
+
+.dep-empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-4);
+  opacity: 0.3;
+}
+
+/* ─── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dep-entry-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+  }
+  
+  .dep-entry-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .dep-commits {
+    flex-wrap: wrap;
+  }
+}
