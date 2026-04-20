@@ -1,0 +1,29 @@
+[Unit]
+Description=E-Commerce BI Platform — GitHub Webhook Listener
+Documentation=https://github.com/cata2lin/EcommerceUI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=root
+Group=root
+WorkingDirectory=/opt/ecommerce/deploy
+ExecStart=/usr/bin/python3 /opt/ecommerce/deploy/webhook_listener.py
+
+# Restart policy
+Restart=always
+RestartSec=3
+StartLimitBurst=10
+StartLimitIntervalSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ecommerce-webhook
+
+# Security hardening
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

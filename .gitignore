@@ -45,6 +45,10 @@ debug_score.py
 inspect_db.py
 /tmp/
 
+# ─── Deploy ───
+deploy/.webhook_secret
+deploy/*.log
+
 # ─── Misc ───
 cookies.txt
 *.sqlite3

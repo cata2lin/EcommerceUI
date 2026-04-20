@@ -1,0 +1,37 @@
+[Unit]
+Description=E-Commerce BI Platform — FastAPI Application
+Documentation=https://github.com/cata2lin/EcommerceUI
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=exec
+User=root
+Group=root
+WorkingDirectory=/opt/ecommerce
+EnvironmentFile=/opt/ecommerce/.env
+
+# Use the virtualenv Python to run uvicorn
+ExecStart=/opt/ecommerce/.venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Logging (goes to journald, viewable via: journalctl -u ecommerce-api)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ecommerce-api
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/ecommerce /var/log /tmp
+
+# Resource limits
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
