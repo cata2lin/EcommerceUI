@@ -199,6 +199,7 @@ def main():
     WebhookHandler.secret = secret
 
     server = HTTPServer(("0.0.0.0", PORT), WebhookHandler)
+    server.socket.setsockopt(__import__('socket').SOL_SOCKET, __import__('socket').SO_REUSEADDR, 1)
     logger.info(f"Webhook listener started on port {PORT}")
     logger.info(f"Deploy script: {DEPLOY_SCRIPT}")
     logger.info(f"Listening for pushes to branch: {DEPLOY_BRANCH}")
