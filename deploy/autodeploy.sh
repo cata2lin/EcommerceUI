@@ -17,8 +17,8 @@
 set -euo pipefail
 
 # ─── Configuration (edit these) ──────────────────────────────────────
-PROJECT_DIR="/opt/ecommerce"
-VENV_DIR="${PROJECT_DIR}/.venv"
+PROJECT_DIR="/root/EcommerceUI"
+VENV_DIR="${PROJECT_DIR}/venv"
 FRONTEND_DIR="${PROJECT_DIR}/frontend"
 FRONTEND_DIST="${PROJECT_DIR}/api/frontend_dist"
 LOG_FILE="/var/log/ecommerce-deploy.log"

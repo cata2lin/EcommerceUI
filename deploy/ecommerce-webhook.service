@@ -8,8 +8,8 @@ Wants=network-online.target
 Type=exec
 User=root
 Group=root
-WorkingDirectory=/opt/ecommerce/deploy
-ExecStart=/usr/bin/python3 /opt/ecommerce/deploy/webhook_listener.py
+WorkingDirectory=/root/EcommerceUI/deploy
+ExecStart=/usr/bin/python3 /root/EcommerceUI/deploy/webhook_listener.py
 
 # Restart policy
 Restart=always

@@ -2,21 +2,19 @@
 # ═══════════════════════════════════════════════════════════════════════
 # setup_server.sh — One-Time Server Bootstrap
 # ═══════════════════════════════════════════════════════════════════════
-# Run this ONCE on a fresh server to set up everything.
+# Designed for: root@vmi2680831 (38.242.226.83)
+# Existing repo: /root/EcommerceUI (already cloned)
+# Existing venv: /root/EcommerceUI/venv
 #
-# Usage:
-#   ssh root@38.242.226.83
-#   curl -sL https://raw.githubusercontent.com/cata2lin/EcommerceUI/main/deploy/setup_server.sh | bash
-#   OR
-#   scp setup_server.sh root@38.242.226.83:/tmp/ && ssh root@38.242.226.83 'bash /tmp/setup_server.sh'
+# Usage: Run from the project directory on the server:
+#   cd ~/EcommerceUI && bash deploy/setup_server.sh
 # ═══════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
 
 # ─── Configuration ───────────────────────────────────────────────────
-PROJECT_DIR="/opt/ecommerce"
-REPO_URL="https://github.com/cata2lin/EcommerceUI.git"
-GIT_BRANCH="main"
+PROJECT_DIR="/root/EcommerceUI"
+VENV_DIR="${PROJECT_DIR}/venv"
 WEBHOOK_SECRET_FILE="${PROJECT_DIR}/deploy/.webhook_secret"
 HASH_DIR="/var/lib/ecommerce-deploy"
 
@@ -26,9 +24,11 @@ echo "════════════════════════�
 echo ""
 
 # ─── Step 1: System Dependencies ────────────────────────────────────
-echo "[1/8] Installing system dependencies..."
+echo "[1/7] Checking system dependencies..."
 apt-get update -qq
-apt-get install -y -qq python3 python3-pip python3-venv git curl ufw > /dev/null
+
+# Install curl and ufw if missing
+apt-get install -y -qq curl ufw > /dev/null 2>&1 || true
 
 # Check if Node.js is installed, if not install Node 20 LTS
 if ! command -v node &> /dev/null; then
@@ -42,57 +42,36 @@ echo "       Node:   $(node --version)"
 echo "       npm:    $(npm --version)"
 echo "       ✅ System dependencies OK"
 
-# ─── Step 2: Clone Repository ───────────────────────────────────────
+# ─── Step 2: Pull latest code ───────────────────────────────────────
 echo ""
-if [ -d "${PROJECT_DIR}/.git" ]; then
-    echo "[2/8] Repository already exists at ${PROJECT_DIR}. Pulling latest..."
-    cd "${PROJECT_DIR}"
-    git fetch origin "${GIT_BRANCH}"
-    git reset --hard "origin/${GIT_BRANCH}"
-else
-    echo "[2/8] Cloning repository..."
-    git clone -b "${GIT_BRANCH}" "${REPO_URL}" "${PROJECT_DIR}"
-    cd "${PROJECT_DIR}"
-fi
-echo "       ✅ Repository ready"
+echo "[2/7] Pulling latest code..."
+cd "${PROJECT_DIR}"
+git pull origin main
+echo "       ✅ Code up to date"
 
-# ─── Step 3: Python Virtual Environment ─────────────────────────────
+# ─── Step 3: Python dependencies ────────────────────────────────────
 echo ""
-echo "[3/8] Setting up Python virtual environment..."
-if [ ! -d "${PROJECT_DIR}/.venv" ]; then
-    python3 -m venv "${PROJECT_DIR}/.venv"
+echo "[3/7] Installing Python dependencies..."
+if [ ! -d "${VENV_DIR}" ]; then
+    echo "       Creating virtualenv..."
+    python3 -m venv "${VENV_DIR}"
 fi
-"${PROJECT_DIR}/.venv/bin/pip" install -r "${PROJECT_DIR}/requirements.txt" -q
-echo "       ✅ Python venv ready"
+"${VENV_DIR}/bin/pip" install -r "${PROJECT_DIR}/requirements.txt" -q
+echo "       ✅ Python deps installed"
 
-# ─── Step 4: Frontend Dependencies & Build ──────────────────────────
+# ─── Step 4: Frontend build ─────────────────────────────────────────
 echo ""
-echo "[4/8] Installing frontend dependencies and building..."
+echo "[4/7] Building frontend..."
 cd "${PROJECT_DIR}/frontend"
 npm install --silent
 npm run build
 cd "${PROJECT_DIR}"
 echo "       ✅ Frontend built"
 
-# ─── Step 5: Environment File ───────────────────────────────────────
+# ─── Step 5: Webhook Secret ─────────────────────────────────────────
 echo ""
-if [ ! -f "${PROJECT_DIR}/.env" ]; then
-    echo "[5/8] Creating .env file from template..."
-    cp "${PROJECT_DIR}/.env.example" "${PROJECT_DIR}/.env"
-    echo ""
-    echo "  ⚠️  IMPORTANT: Edit ${PROJECT_DIR}/.env with your production values!"
-    echo "     nano ${PROJECT_DIR}/.env"
-    echo ""
-else
-    echo "[5/8] .env file already exists — skipping."
-fi
-echo "       ✅ Environment file ready"
-
-# ─── Step 6: Webhook Secret ─────────────────────────────────────────
-echo ""
-echo "[6/8] Setting up webhook secret..."
+echo "[5/7] Setting up webhook secret..."
 if [ ! -f "${WEBHOOK_SECRET_FILE}" ]; then
-    # Generate a random 32-char secret
     GENERATED_SECRET=$(openssl rand -hex 16)
     echo "${GENERATED_SECRET}" > "${WEBHOOK_SECRET_FILE}"
     chmod 600 "${WEBHOOK_SECRET_FILE}"
@@ -106,17 +85,21 @@ else
     echo "       Webhook secret already exists."
     echo "       Current secret: $(cat ${WEBHOOK_SECRET_FILE})"
 fi
-echo "       ✅ Webhook secret ready"
 
-# ─── Step 7: Install Systemd Services ───────────────────────────────
+# ─── Step 6: Install Systemd Services ───────────────────────────────
 echo ""
-echo "[7/8] Installing systemd services..."
+echo "[6/7] Installing systemd services..."
 
 # Create hash storage directory
 mkdir -p "${HASH_DIR}"
 
 # Make deploy script executable
 chmod +x "${PROJECT_DIR}/deploy/autodeploy.sh"
+
+# Stop the existing uvicorn process if running (user was running it manually)
+echo "       Stopping any existing uvicorn processes..."
+pkill -f "uvicorn api.main:app" 2>/dev/null || true
+sleep 2
 
 # Copy service files
 cp "${PROJECT_DIR}/deploy/ecommerce-api.service" /etc/systemd/system/
@@ -128,20 +111,51 @@ systemctl enable ecommerce-api.service
 systemctl enable ecommerce-webhook.service
 
 # Start services
-systemctl start ecommerce-api.service
-systemctl start ecommerce-webhook.service
+systemctl restart ecommerce-api.service
+systemctl restart ecommerce-webhook.service
 
 echo "       ✅ Systemd services installed and started"
 
-# ─── Step 8: Firewall ───────────────────────────────────────────────
+# ─── Step 7: Firewall ───────────────────────────────────────────────
 echo ""
-echo "[8/8] Configuring firewall..."
-ufw allow 22/tcp    > /dev/null 2>&1  # SSH
-ufw allow 8000/tcp  > /dev/null 2>&1  # API
-ufw allow 9000/tcp  > /dev/null 2>&1  # Webhook
-ufw --force enable  > /dev/null 2>&1
-echo "       Ports opened: 22 (SSH), 8000 (API), 9000 (Webhook)"
-echo "       ✅ Firewall configured"
+echo "[7/7] Configuring firewall..."
+ufw allow 22/tcp    > /dev/null 2>&1 || true
+ufw allow 8000/tcp  > /dev/null 2>&1 || true
+ufw allow 9000/tcp  > /dev/null 2>&1 || true
+ufw allow 5432/tcp  > /dev/null 2>&1 || true  # PostgreSQL
+echo "       Ports: 22 (SSH), 5432 (PG), 8000 (API), 9000 (Webhook)"
+
+# Don't force-enable ufw if not already active — could lock out SSH
+if ! ufw status | grep -q "active"; then
+    echo "       ⚠️  UFW is not active. Enable manually: ufw --force enable"
+else
+    echo "       ✅ Firewall already active"
+fi
+
+# ─── Verify Services ────────────────────────────────────────────────
+echo ""
+echo "Verifying services..."
+sleep 3
+
+API_STATUS=$(systemctl is-active ecommerce-api 2>/dev/null || echo "inactive")
+WH_STATUS=$(systemctl is-active ecommerce-webhook 2>/dev/null || echo "inactive")
+
+echo "  API service:     ${API_STATUS}"
+echo "  Webhook service: ${WH_STATUS}"
+
+# Health check
+sleep 2
+if curl -sf http://localhost:8000/api/health > /dev/null 2>&1; then
+    echo "  Health check:    ✅ OK"
+else
+    echo "  Health check:    ⚠️  Not responding yet (may need a few more seconds)"
+fi
+
+if curl -sf http://localhost:9000/health > /dev/null 2>&1; then
+    echo "  Webhook health:  ✅ OK"
+else
+    echo "  Webhook health:  ⚠️  Not responding yet"
+fi
 
 # ─── Summary ────────────────────────────────────────────────────────
 echo ""
@@ -163,12 +177,10 @@ echo "    Deploy:  tail -f /var/log/ecommerce-deploy.log"
 echo "    Webhook: journalctl -u ecommerce-webhook -f"
 echo "    API:     journalctl -u ecommerce-api -f"
 echo ""
-echo "  Next Steps:"
-echo "    1. Edit .env:  nano ${PROJECT_DIR}/.env"
-echo "    2. Configure GitHub webhook:"
-echo "       → https://github.com/cata2lin/EcommerceUI/settings/hooks/new"
-echo "       → Payload URL: http://38.242.226.83:9000/webhook"
-echo "       → Content type: application/json"
-echo "       → Secret: $(cat ${WEBHOOK_SECRET_FILE})"
-echo "       → Events: Just the push event"
+echo "  Next Step: Configure GitHub webhook"
+echo "    → https://github.com/cata2lin/EcommerceUI/settings/hooks/new"
+echo "    → Payload URL: http://38.242.226.83:9000/webhook"
+echo "    → Content type: application/json"
+echo "    → Secret: $(cat ${WEBHOOK_SECRET_FILE} 2>/dev/null || echo 'CHECK FILE')"
+echo "    → Events: Just the push event"
 echo ""

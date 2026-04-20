@@ -27,8 +27,8 @@ from datetime import datetime
 
 # ─── Configuration ───────────────────────────────────────────────────
 PORT = 9000
-DEPLOY_SCRIPT = "/opt/ecommerce/deploy/autodeploy.sh"
-SECRET_FILE = "/opt/ecommerce/deploy/.webhook_secret"
+DEPLOY_SCRIPT = "/root/EcommerceUI/deploy/autodeploy.sh"
+SECRET_FILE = "/root/EcommerceUI/deploy/.webhook_secret"
 DEPLOY_BRANCH = "main"
 LOG_FILE = "/var/log/ecommerce-webhook.log"
 

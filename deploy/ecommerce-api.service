@@ -8,11 +8,11 @@ Wants=postgresql.service
 Type=exec
 User=root
 Group=root
-WorkingDirectory=/opt/ecommerce
-EnvironmentFile=/opt/ecommerce/.env
+WorkingDirectory=/root/EcommerceUI
+EnvironmentFile=/root/EcommerceUI/.env
 
 # Use the virtualenv Python to run uvicorn
-ExecStart=/opt/ecommerce/.venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
+ExecStart=/root/EcommerceUI/venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
 
 # Restart policy
 Restart=on-failure
@@ -28,7 +28,7 @@ SyslogIdentifier=ecommerce-api
 # Security hardening
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=/opt/ecommerce /var/log /tmp
+ReadWritePaths=/root/EcommerceUI /var/log /tmp
 
 # Resource limits
 LimitNOFILE=65535
