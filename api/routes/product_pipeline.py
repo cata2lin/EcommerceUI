@@ -621,8 +621,10 @@ async def export_pipeline_excel(
     min_cogs: Optional[float] = None,
     max_cogs: Optional[float] = None,
 ):
-    """Export all products at a pipeline status to Excel with financial KPIs."""
+    """Export pipeline products to Excel with hyperlinks, IMAGE formulas, and financial KPIs."""
     import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
     import io
     from fastapi.responses import StreamingResponse
 
@@ -673,14 +675,18 @@ async def export_pipeline_excel(
 
     rows = db.execute(text(f"""
         SELECT
-            p.id, p.name, p.sales_ranking,
+            p.id, p.name, p.url, p.image, p.sales_ranking,
             COALESCE(ppd.title, p.name) as title,
-            ppd.sku, ppd.barcode,
+            ppd.sku, ppd.barcode, ppd.variants,
             ppd.retail_price, ppd.cogs_usd, ppd.transport_usd,
-            ppd.customs_rate_percentage, ppd.suggested_quantity_min,
-            ppd.suggested_quantity_max, ppd.hs_code,
+            ppd.customs_rate_percentage, ppd.cubic_meters,
+            ppd.monthly_sales_index,
             par.name as parser_name,
-            pg.name as group_name
+            pg.name as group_name,
+            (SELECT string_agg(pc.name, ', ' ORDER BY pc.name)
+             FROM product_assigned_categories pac
+             JOIN product_categories pc ON pc.id = pac.category_id
+             WHERE pac.product_id = p.id) as categories
         FROM products p
         LEFT JOIN product_pipeline_details ppd ON ppd.product_id = p.id
         LEFT JOIN parsers par ON par.id = p.parser_id
@@ -692,40 +698,176 @@ async def export_pipeline_excel(
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = status
-    ws.append(["ID", "SKU", "Barcode", "Title", "Store", "Group", "Ranking", "Retail (RON)",
-               "COGS (USD)", "Transport (USD)", "Customs %", "Landed (RON)",
-               "Margin %", "Health", "Qty Min", "Qty Max", "HS Code"])
 
+    # ── Styles ──
+    header_font = Font(name="Inter", bold=True, size=10, color="FFFFFF")
+    header_fill = PatternFill(start_color="27272A", end_color="27272A", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    thin_border = Border(
+        bottom=Side(style="thin", color="3F3F46"),
+        right=Side(style="thin", color="3F3F46"),
+    )
+    data_font = Font(name="Inter", size=9)
+    mono_font = Font(name="JetBrains Mono", size=9)
+    link_font = Font(name="Inter", size=9, color="4A90D9", underline="single")
+    data_align = Alignment(vertical="center", wrap_text=False)
+
+    # ── Header row ──
+    headers = [
+        "Image URL", "SKU", "Product ID", "ID / URL", "IMG",
+        "Title / URL", "Variants", "Parser (Source)", "Sales Rank",
+        "Seasonality (Good Months)", "Categories", "Group",
+        "m³", "Price (Lei)", "Cogs (USD)", "Transport (USD)",
+        "Landed Cost (USD)", "Gross Margin (%)",
+    ]
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    ws.row_dimensions[1].height = 30
+
+    # Column widths
+    col_widths = [12, 16, 10, 14, 10, 35, 25, 18, 10, 22, 20, 14, 8, 11, 10, 13, 14, 13]
+    for i, w in enumerate(col_widths):
+        ws.column_dimensions[get_column_letter(i + 1)].width = w
+
+    # ── Month names for seasonality ──
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    row_num = 1  # header at row 1
     for r in rows:
-        landed_ron = None
+        # ── Financial calculations ──
+        landed_usd = None
         margin = None
         health = ""
-        if r.retail_price and r.cogs_usd:
+        if r.cogs_usd:
             cogs = float(r.cogs_usd or 0)
             transport = float(r.transport_usd or 0)
             customs_pct = float(r.customs_rate_percentage or 0)
-            retail = float(r.retail_price)
-            landed_ron = (cogs + transport) * (1 + customs_pct / 100) * usd_to_ron
-            retail_no_vat = retail / (1 + vat_rate / 100)
-            if retail_no_vat > 0:
-                margin = round((retail_no_vat - landed_ron) / retail_no_vat * 100, 2)
-                health = "Healthy" if margin >= 50 else "Average" if margin >= 30 else "Low"
+            landed_usd = round((cogs + transport) * (1 + customs_pct / 100), 2)
 
-        # Filter by margin_health if specified (post-query, same as list view)
+            if r.retail_price:
+                retail = float(r.retail_price)
+                landed_ron = landed_usd * usd_to_ron
+                retail_no_vat = retail / (1 + vat_rate / 100)
+                if retail_no_vat > 0:
+                    margin = round((retail_no_vat - landed_ron) / retail_no_vat * 100, 2)
+                    health = "Healthy" if margin >= 50 else "Average" if margin >= 30 else "Low"
+
+        # Post-query margin_health filter
         if margin_health and health != margin_health:
             continue
 
-        ws.append([
-            r.id, r.sku, r.barcode,
-            r.title, r.parser_name, r.group_name, r.sales_ranking,
-            float(r.retail_price) if r.retail_price else None,
-            float(r.cogs_usd) if r.cogs_usd else None,
-            float(r.transport_usd) if r.transport_usd else None,
-            float(r.customs_rate_percentage) if r.customs_rate_percentage else None,
-            round(landed_ron, 2) if landed_ron else None,
-            margin, health,
-            r.suggested_quantity_min, r.suggested_quantity_max, r.hs_code,
-        ])
+        row_num += 1
+
+        # ── Seasonality: good months (index >= 60) ──
+        seasonality_text = ""
+        if r.monthly_sales_index:
+            msi = r.monthly_sales_index if isinstance(r.monthly_sales_index, list) else []
+            good = [month_names[i] for i, v in enumerate(msi) if i < 12 and v >= 60]
+            seasonality_text = ", ".join(good) if good else "—"
+
+        # ── Variants: flatten to readable string ──
+        variants_text = ""
+        if r.variants:
+            vlist = r.variants if isinstance(r.variants, list) else []
+            variants_text = ", ".join(str(v) for v in vlist) if vlist else ""
+
+        # A: Image URL (raw text — helper column for IMG formula)
+        ws.cell(row=row_num, column=1, value=r.image or "").font = data_font
+
+        # B: SKU
+        ws.cell(row=row_num, column=2, value=r.sku or "").font = mono_font
+
+        # C: Product ID (raw number — referenced by D's HYPERLINK formula)
+        ws.cell(row=row_num, column=3, value=r.id).font = mono_font
+
+        # D: ID / URL — HYPERLINK formula to pipeline details page
+        cell_d = ws.cell(row=row_num, column=4)
+        cell_d.value = f'=HYPERLINK("http://bi.arona.ro:8000/product/"&C{row_num}&"/pipeline-details", C{row_num})'
+        cell_d.font = link_font
+
+        # E: IMG — Excel IMAGE formula using Image URL from column A
+        cell_e = ws.cell(row=row_num, column=5)
+        cell_e.value = f'=IMAGE(A{row_num})' if r.image else ""
+        cell_e.font = data_font
+
+        # F: Title / URL — title text hyperlinked to source product page
+        cell_f = ws.cell(row=row_num, column=6, value=r.title or r.name or "")
+        if r.url:
+            cell_f.hyperlink = r.url
+            cell_f.font = link_font
+        else:
+            cell_f.font = data_font
+
+        # G: Variants
+        ws.cell(row=row_num, column=7, value=variants_text).font = data_font
+
+        # H: Parser (Source)
+        ws.cell(row=row_num, column=8, value=r.parser_name or "").font = data_font
+
+        # I: Sales Rank
+        ws.cell(row=row_num, column=9, value=r.sales_ranking or "").font = data_font
+
+        # J: Seasonality (Good Months)
+        ws.cell(row=row_num, column=10, value=seasonality_text).font = data_font
+
+        # K: Categories
+        ws.cell(row=row_num, column=11, value=r.categories or "").font = data_font
+
+        # L: Group
+        ws.cell(row=row_num, column=12, value=r.group_name or "").font = data_font
+
+        # M: m³
+        cell_m = ws.cell(row=row_num, column=13)
+        cell_m.value = float(r.cubic_meters) if r.cubic_meters else None
+        cell_m.font = mono_font
+        cell_m.number_format = '0.0000'
+
+        # N: Price (Lei)
+        cell_n = ws.cell(row=row_num, column=14)
+        cell_n.value = float(r.retail_price) if r.retail_price else None
+        cell_n.font = mono_font
+        cell_n.number_format = '#,##0.00'
+
+        # O: Cogs (USD)
+        cell_o = ws.cell(row=row_num, column=15)
+        cell_o.value = float(r.cogs_usd) if r.cogs_usd else None
+        cell_o.font = mono_font
+        cell_o.number_format = '#,##0.00'
+
+        # P: Transport (USD)
+        cell_p = ws.cell(row=row_num, column=16)
+        cell_p.value = float(r.transport_usd) if r.transport_usd else None
+        cell_p.font = mono_font
+        cell_p.number_format = '#,##0.00'
+
+        # Q: Landed Cost (USD)
+        cell_q = ws.cell(row=row_num, column=17)
+        cell_q.value = landed_usd
+        cell_q.font = mono_font
+        cell_q.number_format = '#,##0.00'
+
+        # R: Gross Margin (%)
+        cell_r = ws.cell(row=row_num, column=18)
+        cell_r.value = margin
+        cell_r.font = Font(
+            name="JetBrains Mono", size=9, bold=True,
+            color="16A34A" if margin and margin >= 50
+            else "EAB308" if margin and margin >= 30
+            else "EF4444" if margin is not None
+            else "71717A",
+        )
+        cell_r.number_format = '0.00"%"'
+
+    # Freeze header row + auto-filter
+    ws.freeze_panes = "A2"
+    if row_num > 1:
+        ws.auto_filter.ref = f"A1:R{row_num}"
 
     output = io.BytesIO()
     wb.save(output)
