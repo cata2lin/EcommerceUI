@@ -611,6 +611,15 @@ async def export_pipeline_excel(
     status_slug: str,
     db: Session = Depends(get_db),
     _user=Depends(get_current_user),
+    title: Optional[str] = None,
+    parser_id: Optional[int] = None,
+    group_id: Optional[int] = None,
+    sales_ranking: Optional[str] = None,
+    margin_health: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    min_cogs: Optional[float] = None,
+    max_cogs: Optional[float] = None,
 ):
     """Export all products at a pipeline status to Excel with financial KPIs."""
     import openpyxl
@@ -629,10 +638,44 @@ async def export_pipeline_excel(
     vat_rate = get_setting(db, "VAT_RATE", 19.0)
     usd_to_ron = get_setting(db, "USD_TO_RON_CONVERSION_RATE", 4.60)
 
-    rows = db.execute(text("""
+    conditions = ["p.pipeline_status = :status"]
+    params: dict = {"status": status}
+
+    if title:
+        search_conds, search_params, _ = build_search_conditions(
+            title, "p.name", param_prefix="ps", extra_columns=["ppd.title"]
+        )
+        conditions.extend(search_conds)
+        params.update(search_params)
+    if parser_id:
+        conditions.append("p.parser_id = :parser_id")
+        params["parser_id"] = parser_id
+    if group_id:
+        conditions.append("p.group_id = :group_id")
+        params["group_id"] = group_id
+    if sales_ranking:
+        conditions.append("p.sales_ranking = :sales_ranking")
+        params["sales_ranking"] = sales_ranking
+    if min_price is not None:
+        conditions.append("ppd.retail_price >= :min_price")
+        params["min_price"] = min_price
+    if max_price is not None:
+        conditions.append("ppd.retail_price <= :max_price")
+        params["max_price"] = max_price
+    if min_cogs is not None:
+        conditions.append("ppd.cogs_usd >= :min_cogs")
+        params["min_cogs"] = min_cogs
+    if max_cogs is not None:
+        conditions.append("ppd.cogs_usd <= :max_cogs")
+        params["max_cogs"] = max_cogs
+
+    where_clause = " AND ".join(conditions)
+
+    rows = db.execute(text(f"""
         SELECT
             p.id, p.name, p.sales_ranking,
             COALESCE(ppd.title, p.name) as title,
+            ppd.sku, ppd.barcode,
             ppd.retail_price, ppd.cogs_usd, ppd.transport_usd,
             ppd.customs_rate_percentage, ppd.suggested_quantity_min,
             ppd.suggested_quantity_max, ppd.hs_code,
@@ -642,14 +685,14 @@ async def export_pipeline_excel(
         LEFT JOIN product_pipeline_details ppd ON ppd.product_id = p.id
         LEFT JOIN parsers par ON par.id = p.parser_id
         LEFT JOIN product_groups pg ON pg.id = p.group_id
-        WHERE p.pipeline_status = :status
+        WHERE {where_clause}
         ORDER BY p.id DESC
-    """), {"status": status}).fetchall()
+    """), params).fetchall()
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = status
-    ws.append(["ID", "Title", "Store", "Group", "Ranking", "Retail (RON)",
+    ws.append(["ID", "SKU", "Barcode", "Title", "Store", "Group", "Ranking", "Retail (RON)",
                "COGS (USD)", "Transport (USD)", "Customs %", "Landed (RON)",
                "Margin %", "Health", "Qty Min", "Qty Max", "HS Code"])
 
@@ -668,8 +711,13 @@ async def export_pipeline_excel(
                 margin = round((retail_no_vat - landed_ron) / retail_no_vat * 100, 2)
                 health = "Healthy" if margin >= 50 else "Average" if margin >= 30 else "Low"
 
+        # Filter by margin_health if specified (post-query, same as list view)
+        if margin_health and health != margin_health:
+            continue
+
         ws.append([
-            r.id, r.title, r.parser_name, r.group_name, r.sales_ranking,
+            r.id, r.sku, r.barcode,
+            r.title, r.parser_name, r.group_name, r.sales_ranking,
             float(r.retail_price) if r.retail_price else None,
             float(r.cogs_usd) if r.cogs_usd else None,
             float(r.transport_usd) if r.transport_usd else None,

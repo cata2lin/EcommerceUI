@@ -161,7 +161,17 @@ export default function PipelineStatusView() {
     if (!slug) return;
     setExporting(true);
     try {
-      const res = await exportPipelineExcel(slug);
+      const params: Record<string, any> = {};
+      if (appliedFilters.title) params.title = appliedFilters.title;
+      if (appliedFilters.parser_id) params.parser_id = parseInt(appliedFilters.parser_id);
+      if (appliedFilters.group_id) params.group_id = parseInt(appliedFilters.group_id);
+      if (appliedFilters.sales_ranking) params.sales_ranking = appliedFilters.sales_ranking;
+      if (appliedFilters.margin_health) params.margin_health = appliedFilters.margin_health;
+      if (appliedFilters.min_price) params.min_price = parseFloat(appliedFilters.min_price);
+      if (appliedFilters.max_price) params.max_price = parseFloat(appliedFilters.max_price);
+      if (appliedFilters.min_cogs) params.min_cogs = parseFloat(appliedFilters.min_cogs);
+      if (appliedFilters.max_cogs) params.max_cogs = parseFloat(appliedFilters.max_cogs);
+      const res = await exportPipelineExcel(slug, params);
       const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
