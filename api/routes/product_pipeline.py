@@ -768,7 +768,7 @@ async def export_pipeline_excel(
         seasonality_text = ""
         if r.monthly_sales_index:
             msi = r.monthly_sales_index if isinstance(r.monthly_sales_index, list) else []
-            good = [month_names[i] for i, v in enumerate(msi) if i < 12 and v >= 60]
+            good = [month_names[i] for i, v in enumerate(msi) if i < 12 and v is not None and v >= 60]
             seasonality_text = ", ".join(good) if good else "—"
 
         # ── Variants: flatten to readable string ──
