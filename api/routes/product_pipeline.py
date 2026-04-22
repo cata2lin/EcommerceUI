@@ -714,7 +714,7 @@ async def export_pipeline_excel(
 
     # ── Header row ──
     headers = [
-        "Image URL", "SKU", "Product ID", "ID / URL", "IMG",
+        "Image URL", "SKU", "Barcode", "Product ID", "ID / URL", "IMG",
         "Title / URL", "Variants", "Parser (Source)", "Sales Rank",
         "Seasonality (Good Months)", "Categories", "Group",
         "m³", "Price (Lei)", "Cogs (USD)", "Transport (USD)",
@@ -729,8 +729,8 @@ async def export_pipeline_excel(
 
     ws.row_dimensions[1].height = 30
 
-    # Column widths
-    col_widths = [12, 16, 10, 14, 10, 35, 25, 18, 10, 22, 20, 14, 8, 11, 10, 13, 14, 13]
+    # Column widths (19 columns: A-S)
+    col_widths = [12, 16, 16, 10, 14, 10, 35, 25, 18, 10, 22, 20, 14, 8, 11, 10, 13, 14, 13]
     for i, w in enumerate(col_widths):
         ws.column_dimensions[get_column_letter(i + 1)].width = w
 
@@ -777,97 +777,118 @@ async def export_pipeline_excel(
             vlist = r.variants if isinstance(r.variants, list) else []
             variants_text = ", ".join(str(v) for v in vlist) if vlist else ""
 
+        # ── Auto-generate barcode if missing ──
+        barcode = r.barcode
+        if not barcode:
+            prefix = "5941237"
+            id_part = str(r.id % 100000).zfill(5)
+            code = prefix + id_part
+            digits = [int(d) for d in code]
+            checksum = sum(d * (1 if i % 2 == 0 else 3) for i, d in enumerate(digits))
+            check_digit = (10 - (checksum % 10)) % 10
+            barcode = code + str(check_digit)
+            # Persist the generated barcode
+            db.execute(text(
+                "UPDATE product_pipeline_details SET barcode = :bc WHERE product_id = :pid"
+            ), {"bc": barcode, "pid": r.id})
+
         # A: Image URL (raw text — helper column for IMG formula)
         ws.cell(row=row_num, column=1, value=r.image or "").font = data_font
 
         # B: SKU
         ws.cell(row=row_num, column=2, value=r.sku or "").font = mono_font
 
-        # C: Product ID (raw number — referenced by D's HYPERLINK formula)
-        ws.cell(row=row_num, column=3, value=r.id).font = mono_font
+        # C: Barcode
+        ws.cell(row=row_num, column=3, value=barcode or "").font = mono_font
 
-        # D: ID / URL — HYPERLINK formula to pipeline details page
-        cell_d = ws.cell(row=row_num, column=4)
-        cell_d.value = f'=HYPERLINK("http://bi.arona.ro:8000/product/"&C{row_num}&"/pipeline-details", C{row_num})'
-        cell_d.font = link_font
+        # D: Product ID (raw number — referenced by E's HYPERLINK formula)
+        ws.cell(row=row_num, column=4, value=r.id).font = mono_font
 
-        # E: IMG — Excel IMAGE formula using Image URL from column A
+        # E: ID / URL — HYPERLINK formula to pipeline details page
         cell_e = ws.cell(row=row_num, column=5)
-        cell_e.value = f'=IMAGE(A{row_num})' if r.image else ""
-        cell_e.font = data_font
+        cell_e.value = f'=HYPERLINK("http://bi.arona.ro:8000/product/"&D{row_num}&"/pipeline-details", D{row_num})'
+        cell_e.font = link_font
 
-        # F: Title / URL — title text hyperlinked to source product page
-        cell_f = ws.cell(row=row_num, column=6, value=r.title or r.name or "")
+        # F: IMG — Excel IMAGE formula using Image URL from column A
+        cell_f = ws.cell(row=row_num, column=6)
+        cell_f.value = f'=IMAGE(A{row_num})' if r.image else ""
+        cell_f.font = data_font
+
+        # G: Title / URL — title text hyperlinked to source product page
+        cell_g = ws.cell(row=row_num, column=7, value=r.title or r.name or "")
         if r.url:
-            cell_f.hyperlink = r.url
-            cell_f.font = link_font
+            cell_g.hyperlink = r.url
+            cell_g.font = link_font
         else:
-            cell_f.font = data_font
+            cell_g.font = data_font
 
-        # G: Variants
-        ws.cell(row=row_num, column=7, value=variants_text).font = data_font
+        # H: Variants
+        ws.cell(row=row_num, column=8, value=variants_text).font = data_font
 
-        # H: Parser (Source)
-        ws.cell(row=row_num, column=8, value=r.parser_name or "").font = data_font
+        # I: Parser (Source)
+        ws.cell(row=row_num, column=9, value=r.parser_name or "").font = data_font
 
-        # I: Sales Rank
-        ws.cell(row=row_num, column=9, value=r.sales_ranking or "").font = data_font
+        # J: Sales Rank
+        ws.cell(row=row_num, column=10, value=r.sales_ranking or "").font = data_font
 
-        # J: Seasonality (Good Months)
-        ws.cell(row=row_num, column=10, value=seasonality_text).font = data_font
+        # K: Seasonality (Good Months)
+        ws.cell(row=row_num, column=11, value=seasonality_text).font = data_font
 
-        # K: Categories
-        ws.cell(row=row_num, column=11, value=r.categories or "").font = data_font
+        # L: Categories
+        ws.cell(row=row_num, column=12, value=r.categories or "").font = data_font
 
-        # L: Group
-        ws.cell(row=row_num, column=12, value=r.group_name or "").font = data_font
+        # M: Group
+        ws.cell(row=row_num, column=13, value=r.group_name or "").font = data_font
 
-        # M: m³
-        cell_m = ws.cell(row=row_num, column=13)
-        cell_m.value = float(r.cubic_meters) if r.cubic_meters else None
-        cell_m.font = mono_font
-        cell_m.number_format = '0.0000'
-
-        # N: Price (Lei)
+        # N: m³
         cell_n = ws.cell(row=row_num, column=14)
-        cell_n.value = float(r.retail_price) if r.retail_price else None
+        cell_n.value = float(r.cubic_meters) if r.cubic_meters else None
         cell_n.font = mono_font
-        cell_n.number_format = '#,##0.00'
+        cell_n.number_format = '0.0000'
 
-        # O: Cogs (USD)
+        # O: Price (Lei)
         cell_o = ws.cell(row=row_num, column=15)
-        cell_o.value = float(r.cogs_usd) if r.cogs_usd else None
+        cell_o.value = float(r.retail_price) if r.retail_price else None
         cell_o.font = mono_font
         cell_o.number_format = '#,##0.00'
 
-        # P: Transport (USD)
+        # P: Cogs (USD)
         cell_p = ws.cell(row=row_num, column=16)
-        cell_p.value = float(r.transport_usd) if r.transport_usd else None
+        cell_p.value = float(r.cogs_usd) if r.cogs_usd else None
         cell_p.font = mono_font
         cell_p.number_format = '#,##0.00'
 
-        # Q: Landed Cost (USD)
+        # Q: Transport (USD)
         cell_q = ws.cell(row=row_num, column=17)
-        cell_q.value = landed_usd
+        cell_q.value = float(r.transport_usd) if r.transport_usd else None
         cell_q.font = mono_font
         cell_q.number_format = '#,##0.00'
 
-        # R: Gross Margin (%)
+        # R: Landed Cost (USD)
         cell_r = ws.cell(row=row_num, column=18)
-        cell_r.value = margin
-        cell_r.font = Font(
+        cell_r.value = landed_usd
+        cell_r.font = mono_font
+        cell_r.number_format = '#,##0.00'
+
+        # S: Gross Margin (%)
+        cell_s = ws.cell(row=row_num, column=19)
+        cell_s.value = margin
+        cell_s.font = Font(
             name="JetBrains Mono", size=9, bold=True,
             color="16A34A" if margin and margin >= 50
             else "EAB308" if margin and margin >= 30
             else "EF4444" if margin is not None
             else "71717A",
         )
-        cell_r.number_format = '0.00"%"'
+        cell_s.number_format = '0.00"%"'
+
+    # Commit any auto-generated barcodes
+    db.commit()
 
     # Freeze header row + auto-filter
     ws.freeze_panes = "A2"
     if row_num > 1:
-        ws.auto_filter.ref = f"A1:R{row_num}"
+        ws.auto_filter.ref = f"A1:S{row_num}"
 
     output = io.BytesIO()
     wb.save(output)
