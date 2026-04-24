@@ -287,6 +287,11 @@ export default function Sidebar() {
             {Icons.package}
             <span>Approved Items</span>
           </NavLink>
+
+          <NavLink to="/purchase-orders" end className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            {Icons.package}
+            <span>Purchase Orders</span>
+          </NavLink>
         </div>
 
         {/* ─── System Section ─── */}

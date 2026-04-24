@@ -3,7 +3,7 @@
  * Uses the same structure and logic as PipelineStatusView but filters for approved products only.
  */
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { fetchPipelineStatus, exportPipelineExcel, fetchConfig } from '../api';
 
 const RANKING_OPTIONS = [
@@ -34,6 +34,9 @@ interface PipelineProduct {
   margin_health: string | null;
   suggested_quantity_min: number | null;
   suggested_quantity_max: number | null;
+  purchase_order_id: number | null;
+  po_display_number: string | null;
+  po_status: string | null;
 }
 
 interface FilterOption { id: number; name: string; }
@@ -48,6 +51,7 @@ const emptyForm = {
   max_price: '',
   min_cogs: '',
   max_cogs: '',
+  po_filter: '',
 };
 
 /** Sortable columns config */
@@ -138,6 +142,7 @@ export default function ApprovedItems() {
       if (appliedFilters.max_price) params.max_price = parseFloat(appliedFilters.max_price);
       if (appliedFilters.min_cogs) params.min_cogs = parseFloat(appliedFilters.min_cogs);
       if (appliedFilters.max_cogs) params.max_cogs = parseFloat(appliedFilters.max_cogs);
+      if (appliedFilters.po_filter) params.po_filter = appliedFilters.po_filter;
       
       // Always filter for approved products only
       const res = await fetchPipelineStatus('approved', params);
@@ -177,6 +182,7 @@ export default function ApprovedItems() {
       if (appliedFilters.max_price) params.max_price = parseFloat(appliedFilters.max_price);
       if (appliedFilters.min_cogs) params.min_cogs = parseFloat(appliedFilters.min_cogs);
       if (appliedFilters.max_cogs) params.max_cogs = parseFloat(appliedFilters.max_cogs);
+      if (appliedFilters.po_filter) params.po_filter = appliedFilters.po_filter;
       
       const res = await exportPipelineExcel('approved', params);
       const url = URL.createObjectURL(res.data);
@@ -303,6 +309,11 @@ export default function ApprovedItems() {
             <select className="select" value={form.margin_health} onChange={e => updateField('margin_health', e.target.value)} style={{ maxWidth: 150 }}>
               {MARGIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+            <select className="select" value={form.po_filter} onChange={e => updateField('po_filter', e.target.value)} style={{ maxWidth: 150 }} title="Filter by PO status">
+              <option value="">All PO Status</option>
+              <option value="yes">📦 Linked to PO</option>
+              <option value="no">Not in PO</option>
+            </select>
           </div>
           {/* Row 2: Price + COGS ranges */}
           <div className="flex items-center gap-3 flex-wrap" style={{ marginTop: 'var(--spacing-3)' }}>
@@ -353,16 +364,17 @@ export default function ApprovedItems() {
               <th style={{ ...thStyle, cursor: 'default' }}>Rank</th>
               <th style={{ ...thStyle, cursor: 'default' }}>Health</th>
               <th style={{ ...thStyle, cursor: 'default' }}>Qty</th>
+              <th style={{ ...thStyle, cursor: 'default' }}>PO</th>
               <th style={{ ...thStyle, width: 60, cursor: 'default' }}></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i}><td colSpan={11} style={tdStyle}><div className="skeleton skeleton-text" style={{ width: `${50 + Math.random() * 40}%` }} /></td></tr>
+                <tr key={i}><td colSpan={12} style={tdStyle}><div className="skeleton skeleton-text" style={{ width: `${50 + Math.random() * 40}%` }} /></td></tr>
               ))
             ) : products.length === 0 ? (
-              <tr><td colSpan={11} style={{ ...tdStyle, textAlign: 'center', padding: 'var(--spacing-12)', color: 'var(--color-text-muted)' }}>No approved products found</td></tr>
+              <tr><td colSpan={12} style={{ ...tdStyle, textAlign: 'center', padding: 'var(--spacing-12)', color: 'var(--color-text-muted)' }}>No approved products found</td></tr>
             ) : products.map(p => (
               <tr key={p.id} style={{ transition: 'background 0.15s' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-hover)'}
@@ -404,6 +416,22 @@ export default function ApprovedItems() {
                 </td>
                 <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>
                   {p.suggested_quantity_min || p.suggested_quantity_max ? `${p.suggested_quantity_min ?? '?'}-${p.suggested_quantity_max ?? '?'}` : '—'}
+                </td>
+                <td style={tdStyle}>
+                  {p.purchase_order_id && p.po_display_number ? (
+                    <Link
+                      to={`/purchase-orders/${p.purchase_order_id}`}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        display: 'inline-block',
+                        background: p.po_status === 'SENT_TO_TOM' ? '#D1FAE5' : p.po_status === 'APPROVED' ? '#DBEAFE' : p.po_status === 'CANCELLED' ? '#FEE2E2' : '#F3F4F6',
+                        color: p.po_status === 'SENT_TO_TOM' ? '#065F46' : p.po_status === 'APPROVED' ? '#1E40AF' : p.po_status === 'CANCELLED' ? '#991B1B' : '#6B7280',
+                        padding: '2px 8px', borderRadius: 10,
+                        fontSize: '0.65rem', fontWeight: 700, fontFamily: 'var(--font-mono)', textDecoration: 'none',
+                      }}
+                      title={`${p.po_display_number} · ${p.po_status}`}
+                    >{p.po_display_number}</Link>
+                  ) : <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>—</span>}
                 </td>
                 <td style={tdStyle}>
                   <button 

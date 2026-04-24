@@ -186,3 +186,100 @@ class ApplicationSetting(Base):
     setting_value = Column(String, nullable=False)
     value_type = Column(String, default="string")
     description = Column(Text)
+
+
+# ─── PurchaseOrder ──────────────────────────────────────────────────
+class PurchaseOrder(Base):
+    __tablename__ = "purchase_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(Integer, unique=True, nullable=False)
+    title = Column(Text)
+    priority = Column(String(16), nullable=False, default="STANDARD")
+    status = Column(String(32), nullable=False, default="DRAFT")
+    notes = Column(Text)
+    total_cost_usd = Column(Numeric(14, 2), default=0)
+    created_by_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    approved_at = Column(DateTime)
+    cancelled_at = Column(DateTime)
+
+    tom_number = Column(String(64), unique=True)
+    tom_po_id = Column(String(128))
+    tom_status = Column(String(32))
+    tom_sent_at = Column(DateTime)
+    tom_send_idempotency_key = Column(String(64))
+    tom_refreshed_at = Column(DateTime)
+    tom_supplier_name = Column(Text)
+    tom_supplier_url = Column(Text)
+    tom_shipment_code = Column(Text)
+    tom_shipment_mode = Column(String(32))
+    tom_shipment_eta = Column(DateTime)
+
+    items = relationship("PurchaseOrderItem", back_populates="purchase_order", cascade="all, delete-orphan")
+    sync_logs = relationship("PoSyncLog", back_populates="purchase_order", cascade="all, delete-orphan")
+    created_by = relationship("User")
+
+
+# ─── PurchaseOrderItem ──────────────────────────────────────────────
+class PurchaseOrderItem(Base):
+    __tablename__ = "purchase_order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_title = Column(Text, nullable=False)
+    sku = Column(String(128))
+    barcode = Column(String(128))
+    image_url = Column(Text)
+    quantity = Column(Integer, nullable=False, default=1)
+    unit_cost_usd = Column(Numeric(12, 2))
+    line_cost_usd = Column(Numeric(14, 2))
+    priority = Column(String(16), nullable=False, default="STANDARD")
+    notes = Column(Text)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    tom_item_id = Column(String(128))
+    tom_status = Column(String(32))
+    tom_matched_by = Column(String(32))
+    tom_ordered_qty = Column(Integer)
+    tom_received_qty = Column(Integer)
+    tom_shipped_qty = Column(Integer)
+    tom_unit_cost_usd = Column(Numeric(12, 2))
+    tom_extra_cost_usd = Column(Numeric(12, 2))
+    tom_shipment_code = Column(Text)
+    tom_cancel_reason = Column(Text)
+
+    purchase_order = relationship("PurchaseOrder", back_populates="items")
+    product = relationship("Product", foreign_keys=[product_id])
+
+
+# ─── PoSyncLog ──────────────────────────────────────────────────────
+class PoSyncLog(Base):
+    __tablename__ = "po_sync_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id", ondelete="CASCADE"), nullable=False)
+    direction = Column(String(8), nullable=False)
+    action = Column(String(64), nullable=False)
+    status = Column(String(16), nullable=False)
+    http_status = Column(Integer)
+    idempotency_key = Column(String(64))
+    items_affected = Column(Integer, default=0)
+    error_message = Column(Text)
+    request_body = Column(JSONB)
+    response_body = Column(JSONB)
+    details = Column(JSONB)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    purchase_order = relationship("PurchaseOrder", back_populates="sync_logs")
+
+
+# ─── ProductPurchaseOrderLink (junction; enforces "one PO per product ever") ─
+class ProductPurchaseOrderLink(Base):
+    __tablename__ = "product_purchase_order_links"
+
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True)
+    purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    linked_at = Column(DateTime, nullable=False, server_default=func.now())

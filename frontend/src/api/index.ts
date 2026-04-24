@@ -155,4 +155,44 @@ export const fetchDeployLiveLog = (lines: number = 100) =>
 export const triggerDeploy = () =>
   api.post('/api/deployments/trigger');
 
+// ─── Purchase Orders ──────────────────────────────────────
+export const fetchPurchaseOrders = (params?: Record<string, any>) =>
+  api.get('/api/purchase-orders', { params });
+
+export const fetchPurchaseOrderStats = () =>
+  api.get('/api/purchase-orders/stats');
+
+export const fetchPurchaseOrder = (id: number) =>
+  api.get(`/api/purchase-orders/${id}`);
+
+export const fetchPurchaseOrderSyncLogs = (id: number) =>
+  api.get(`/api/purchase-orders/${id}/sync-logs`);
+
+export const createPurchaseOrder = (data: any) =>
+  api.post('/api/purchase-orders', data);
+
+export const updatePurchaseOrder = (id: number, data: any) =>
+  api.patch(`/api/purchase-orders/${id}`, data);
+
+export const deletePurchaseOrder = (id: number) =>
+  api.delete(`/api/purchase-orders/${id}`);
+
+export const addItemToPurchaseOrder = (id: number, data: any) =>
+  api.post(`/api/purchase-orders/${id}/items`, data);
+
+export const deletePurchaseOrderItem = (id: number, itemId: number) =>
+  api.delete(`/api/purchase-orders/${id}/items/${itemId}`);
+
+export const approvePurchaseOrder = (id: number) =>
+  api.post(`/api/purchase-orders/${id}/approve`);
+
+export const cancelPurchaseOrder = (id: number) =>
+  api.post(`/api/purchase-orders/${id}/cancel`);
+
+export const sendPurchaseOrderToTom = (id: number) =>
+  api.post(`/api/purchase-orders/${id}/send-to-tom`);
+
+export const refreshPurchaseOrderFromTom = (id: number) =>
+  api.post(`/api/purchase-orders/${id}/refresh-from-tom`);
+
 export default api;

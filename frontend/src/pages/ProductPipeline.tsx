@@ -16,6 +16,7 @@ import {
   generateSeasonality, autofillTaric
 } from '../api';
 import { useSidebar } from '../contexts/SidebarContext';
+import AddToPoModal from '../components/AddToPoModal';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Tooltip, Legend);
 
@@ -127,6 +128,9 @@ export default function ProductPipeline() {
   const [showChartModal, setShowChartModal] = useState(false);
   const [chartPeriod, setChartPeriod] = useState<DatePeriod>('30d');
   const [chartCustomRange, setChartCustomRange] = useState<DateRange>({ start: null, end: null });
+
+  // Add-to-PO modal
+  const [showAddToPoModal, setShowAddToPoModal] = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
@@ -485,6 +489,25 @@ export default function ProductPipeline() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {data?.purchase_order ? (
+            <Link
+              to={`/purchase-orders/${data.purchase_order.id}`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: '#D1FAE5', color: '#065F46', padding: '6px 12px',
+                borderRadius: 14, fontSize: '0.75rem', fontWeight: 700,
+                fontFamily: 'var(--font-mono)', textDecoration: 'none',
+              }}
+              title={`Linked to PO (${data.purchase_order.status})`}
+            >
+              📦 {data.purchase_order.display_number}
+              {data.purchase_order.tom_number && <span style={{ opacity: 0.7 }}>· TOM: {data.purchase_order.tom_number}</span>}
+            </Link>
+          ) : currentStatus === 'Approved' ? (
+            <button className="btn btn-sm" style={{ background: '#0EA5E9', color: '#fff' }} onClick={() => setShowAddToPoModal(true)}>
+              📦 Add to Purchase Order
+            </button>
+          ) : null}
           <button className="btn btn-primary btn-sm" onClick={() => handleSave('save')} disabled={saving}>
             {saving && <span className="spinner-sm" />}
             💾 Save
@@ -1110,6 +1133,22 @@ export default function ProductPipeline() {
           </div>
         )}
       </div>
+
+      {/* ─── Add to PO Modal ── */}
+      {showAddToPoModal && data && (
+        <AddToPoModal
+          product={{
+            id: data.product.id,
+            title: form.title || data.product.name,
+            image: data.product.image,
+            sku: form.sku,
+            suggested_qty: form.suggested_quantity_min,
+            unit_cost_usd: form.cogs_usd,
+          }}
+          onClose={() => setShowAddToPoModal(false)}
+          onSuccess={() => { setShowAddToPoModal(false); loadData(); }}
+        />
+      )}
 
       {/* ─── Chart Popup Modal ── */}
       {showChartModal && (

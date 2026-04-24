@@ -120,6 +120,27 @@ async def get_pipeline_details(
     except Exception:
         sales_stats = None
 
+    # Linked Purchase Order (Option B: at most one ever)
+    po_info = None
+    try:
+        po_row = db.execute(text(
+            "SELECT po.id, po.number, po.status, po.tom_number, po.tom_status "
+            "FROM product_purchase_order_links l "
+            "JOIN purchase_orders po ON po.id = l.purchase_order_id "
+            "WHERE l.product_id = :pid"
+        ), {"pid": product_id}).fetchone()
+        if po_row:
+            po_info = {
+                "id": po_row[0],
+                "number": po_row[1],
+                "display_number": f"BI-{po_row[1]:03d}",
+                "status": po_row[2],
+                "tom_number": po_row[3],
+                "tom_status": po_row[4],
+            }
+    except Exception:
+        po_info = None
+
     return {
         "product": {
             "id": product.id,
@@ -131,6 +152,7 @@ async def get_pipeline_details(
             "pipeline_status": product.pipeline_status,
             "group_id": product.group_id,
         },
+        "purchase_order": po_info,
         "pipeline_detail": {
             "title": detail.title if detail else None,
             "sku": detail.sku if detail else None,
@@ -481,6 +503,7 @@ async def get_pipeline_status_view(
     max_price: Optional[float] = None,
     min_cogs: Optional[float] = None,
     max_cogs: Optional[float] = None,
+    po_filter: Optional[str] = None,  # 'yes' | 'no'
     sort_by: str = "id",
     sort_dir: str = "desc",
     page: int = 1,
@@ -533,6 +556,10 @@ async def get_pipeline_status_view(
     if max_cogs is not None:
         conditions.append("ppd.cogs_usd <= :max_cogs")
         params["max_cogs"] = max_cogs
+    if po_filter == "yes":
+        conditions.append("EXISTS (SELECT 1 FROM product_purchase_order_links _l WHERE _l.product_id = p.id)")
+    elif po_filter == "no":
+        conditions.append("NOT EXISTS (SELECT 1 FROM product_purchase_order_links _l WHERE _l.product_id = p.id)")
 
     where_clause = " AND ".join(conditions)
 
@@ -572,11 +599,16 @@ async def get_pipeline_status_view(
             ppd.customs_rate_percentage, ppd.suggested_quantity_min,
             ppd.suggested_quantity_max, ppd.top_keywords,
             par.name as parser_name,
-            pg.name as group_name
+            pg.name as group_name,
+            ppol.purchase_order_id as purchase_order_id,
+            po.number as po_number,
+            po.status as po_status
         FROM products p
         LEFT JOIN product_pipeline_details ppd ON ppd.product_id = p.id
         LEFT JOIN parsers par ON par.id = p.parser_id
         LEFT JOIN product_groups pg ON pg.id = p.group_id
+        LEFT JOIN product_purchase_order_links ppol ON ppol.product_id = p.id
+        LEFT JOIN purchase_orders po ON po.id = ppol.purchase_order_id
         WHERE {where_clause}
         ORDER BY {sort_col} {direction} NULLS LAST
         LIMIT :limit OFFSET :offset
@@ -617,6 +649,10 @@ async def get_pipeline_status_view(
             "sales_ranking": r.sales_ranking,
             "retail_price": float(r.retail_price) if r.retail_price else None,
             "cogs_usd": float(r.cogs_usd) if r.cogs_usd else None,
+            "purchase_order_id": r.purchase_order_id,
+            "po_number": r.po_number,
+            "po_status": r.po_status,
+            "po_display_number": f"BI-{r.po_number:03d}" if r.po_number else None,
             "gross_margin": gross_margin,
             "margin_health": margin_health_val,
             "suggested_quantity_min": r.suggested_quantity_min,
