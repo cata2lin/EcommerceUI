@@ -481,16 +481,43 @@ export default function ProductPipeline() {
 
       {/* ─── Product Header Card ── */}
       <div className="card" style={{ marginBottom: 'var(--spacing-4)' }}>
+        {/* Top meta strip: ID · Store · SKU · Barcode */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px',
+          fontSize: '0.72rem', color: 'var(--color-text-muted)',
+          paddingBottom: 'var(--spacing-3)',
+          borderBottom: '1px solid var(--color-border-default)',
+          marginBottom: 'var(--spacing-3)',
+        }}>
+          <span><span style={{ opacity: 0.7 }}>ID</span> <span className="text-mono" style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>#{product.id}</span></span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span><span style={{ opacity: 0.7 }}>Store</span> <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{product.parser_name || '—'}</span></span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span><span style={{ opacity: 0.7 }}>SKU</span> <span className="text-mono" style={{ color: 'var(--color-text-primary)' }}>{form.sku || 'N/A'}</span></span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span><span style={{ opacity: 0.7 }}>Barcode</span> <span className="text-mono" style={{ color: 'var(--color-text-primary)' }}>{form.barcode || 'N/A'}</span></span>
+          {product.url && (
+            <>
+              <span style={{ flex: 1 }} />
+              <a href={product.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent-primary)', fontSize: '0.72rem', textDecoration: 'none' }}>
+                View on Site →
+              </a>
+            </>
+          )}
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: 'var(--spacing-4)', alignItems: 'start' }}>
-          {/* Left: Image + Info */}
+          {/* Left: Image + Title + Variants */}
           <div className="flex gap-4">
             <div style={{
-              width: 80, height: 80, borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0,
+              width: 96, height: 96, borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0,
               background: 'var(--color-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '1px solid var(--color-border-default)',
             }}>
               {product.image ? <img src={product.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ color: 'var(--color-text-muted)' }}>?</span>}
             </div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Title (primary focus) */}
               {isEditingTitle ? (
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                   <textarea
@@ -501,220 +528,88 @@ export default function ProductPipeline() {
                     autoFocus
                     rows={3}
                     style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 700,
+                      fontSize: '1rem',
+                      fontWeight: 600,
                       border: '2px solid var(--color-primary)',
                       borderRadius: 'var(--radius-sm)',
-                      padding: '8px 12px',
+                      padding: '6px 10px',
                       background: 'var(--color-bg-default)',
                       color: 'var(--color-text-primary)',
                       outline: 'none',
-                      minWidth: '300px',
-                      maxWidth: '500px',
+                      width: '100%',
                       resize: 'vertical',
                       fontFamily: 'inherit',
-                      lineHeight: '1.4'
+                      lineHeight: '1.35',
                     }}
                     placeholder="Enter product title..."
                   />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <button
-                      onClick={saveTitle}
-                      style={{
-                        background: 'var(--color-success)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '6px 10px',
-                        fontSize: '0.7rem',
-                        cursor: 'pointer',
-                        minWidth: '32px'
-                      }}
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={cancelEditTitle}
-                      style={{
-                        background: 'var(--color-error)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '6px 10px',
-                        fontSize: '0.7rem',
-                        cursor: 'pointer',
-                        minWidth: '32px'
-                      }}
-                    >
-                      ✕
-                    </button>
+                    <button onClick={saveTitle} style={{ background: 'var(--color-success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '6px 10px', fontSize: '0.7rem', cursor: 'pointer' }}>✓</button>
+                    <button onClick={cancelEditTitle} style={{ background: 'var(--color-error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '6px 10px', fontSize: '0.7rem', cursor: 'pointer' }}>✕</button>
                   </div>
                 </div>
               ) : (
                 <div
                   onClick={startEditingTitle}
                   style={{
-                    fontSize: '1.1rem',
-                    fontWeight: 700,
-                    margin: 0,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '4px 8px 4px 0',
-                    borderRadius: 'var(--radius-sm)',
-                    transition: 'all 0.15s ease',
-                    position: 'relative'
+                    fontSize: '1rem', fontWeight: 600, lineHeight: 1.35,
+                    cursor: 'pointer', padding: '4px 6px', margin: '-4px -6px',
+                    borderRadius: 'var(--radius-sm)', transition: 'background 0.15s',
+                    display: 'flex', alignItems: 'flex-start', gap: '6px',
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--color-bg-hover)';
-                    e.currentTarget.style.paddingLeft = '8px';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.paddingLeft = '0';
-                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                   title="Click to edit title"
                 >
-                  <span>{form.title || product.name}</span>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    style={{
-                      opacity: 0.5,
-                      transition: 'opacity 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = '1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = '0.5';
-                    }}
-                  >
+                  <span style={{ flex: 1 }}>{form.title || product.name}</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.4, flexShrink: 0, marginTop: 3 }}>
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                 </div>
               )}
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                <p style={{ margin: '2px 0' }}>SKU: <span className="text-mono" style={{ color: 'var(--color-text-default)' }}>{form.sku || 'N/A'}</span></p>
-                <p style={{ margin: '2px 0' }}>Barcode: <span className="text-mono" style={{ color: 'var(--color-text-default)' }}>{form.barcode || 'N/A'}</span></p>
-                
+
+              {/* Variants row */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '8px', fontSize: '0.75rem' }}>
                 {/* Variant 1 */}
-                <div style={{ margin: '2px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span>Variant 1:</span>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>V1</span>
                   {isEditingVariant1 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <input
-                        type="text"
-                        value={variant1EditValue}
-                        onChange={(e) => setVariant1EditValue(e.target.value)}
-                        onKeyDown={handleVariant1KeyDown}
-                        onBlur={saveVariant1}
-                        autoFocus
-                        style={{
-                          border: '1px solid var(--color-primary)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '2px 6px',
-                          fontSize: '0.75rem',
-                          background: 'var(--color-bg-default)',
-                          color: 'var(--color-text-primary)',
-                          outline: 'none',
-                          minWidth: '120px'
-                        }}
-                        placeholder="Enter variant 1..."
-                      />
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <input type="text" value={variant1EditValue} onChange={(e) => setVariant1EditValue(e.target.value)} onKeyDown={handleVariant1KeyDown} onBlur={saveVariant1} autoFocus
+                        style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-sm)', padding: '2px 6px', fontSize: '0.75rem', background: 'var(--color-bg-default)', color: 'var(--color-text-primary)', outline: 'none', minWidth: '120px' }}
+                        placeholder="Value..." />
                       <button onClick={saveVariant1} style={{ background: 'var(--color-success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✓</button>
                       <button onClick={cancelEditVariant1} style={{ background: 'var(--color-error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✕</button>
                     </div>
                   ) : (
-                    <span
-                      className="text-mono"
-                      onClick={startEditingVariant1}
-                      style={{
-                        color: 'var(--color-text-default)',
-                        cursor: 'pointer',
-                        padding: '2px 4px',
-                        borderRadius: 'var(--radius-sm)',
-                        transition: 'all 0.15s ease',
-                        minHeight: '16px',
-                        display: 'inline-flex',
-                        alignItems: 'center'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--color-bg-hover)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                      title="Click to edit variant 1"
-                    >
-                      {form.variant_1 || 'Click to add...'}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Variant 2 */}
-                <div style={{ margin: '2px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span>Variant 2:</span>
-                  {isEditingVariant2 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <input
-                        type="text"
-                        value={variant2EditValue}
-                        onChange={(e) => setVariant2EditValue(e.target.value)}
-                        onKeyDown={handleVariant2KeyDown}
-                        onBlur={saveVariant2}
-                        autoFocus
-                        style={{
-                          border: '1px solid var(--color-primary)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '2px 6px',
-                          fontSize: '0.75rem',
-                          background: 'var(--color-bg-default)',
-                          color: 'var(--color-text-primary)',
-                          outline: 'none',
-                          minWidth: '120px'
-                        }}
-                        placeholder="Enter variant 2..."
-                      />
-                      <button onClick={saveVariant2} style={{ background: 'var(--color-success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✓</button>
-                      <button onClick={cancelEditVariant2} style={{ background: 'var(--color-error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✕</button>
-                    </div>
-                  ) : (
-                    <span
-                      className="text-mono"
-                      onClick={startEditingVariant2}
-                      style={{
-                        color: 'var(--color-text-default)',
-                        cursor: 'pointer',
-                        padding: '2px 4px',
-                        borderRadius: 'var(--radius-sm)',
-                        transition: 'all 0.15s ease',
-                        minHeight: '16px',
-                        display: 'inline-flex',
-                        alignItems: 'center'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--color-bg-hover)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                      title="Click to edit variant 2"
-                    >
-                      {form.variant_2 || 'Click to add...'}
+                    <span onClick={startEditingVariant1}
+                      style={{ color: form.variant_1 ? 'var(--color-text-primary)' : 'var(--color-text-muted)', cursor: 'pointer', padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg-subtle)', border: '1px solid var(--color-border-default)', fontStyle: form.variant_1 ? 'normal' : 'italic' }}
+                      title="Click to edit">
+                      {form.variant_1 || '+ add'}
                     </span>
                   )}
                 </div>
 
-                {product.url && (
-                  <a href={product.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-indigo-400)', fontSize: '0.75rem' }}>View on Site →</a>
-                )}
+                {/* Variant 2 */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>V2</span>
+                  {isEditingVariant2 ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <input type="text" value={variant2EditValue} onChange={(e) => setVariant2EditValue(e.target.value)} onKeyDown={handleVariant2KeyDown} onBlur={saveVariant2} autoFocus
+                        style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-sm)', padding: '2px 6px', fontSize: '0.75rem', background: 'var(--color-bg-default)', color: 'var(--color-text-primary)', outline: 'none', minWidth: '120px' }}
+                        placeholder="Value..." />
+                      <button onClick={saveVariant2} style={{ background: 'var(--color-success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✓</button>
+                      <button onClick={cancelEditVariant2} style={{ background: 'var(--color-error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✕</button>
+                    </div>
+                  ) : (
+                    <span onClick={startEditingVariant2}
+                      style={{ color: form.variant_2 ? 'var(--color-text-primary)' : 'var(--color-text-muted)', cursor: 'pointer', padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg-subtle)', border: '1px solid var(--color-border-default)', fontStyle: form.variant_2 ? 'normal' : 'italic' }}
+                      title="Click to edit">
+                      {form.variant_2 || '+ add'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
