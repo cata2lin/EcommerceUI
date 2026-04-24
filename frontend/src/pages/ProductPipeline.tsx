@@ -322,56 +322,63 @@ export default function ProductPipeline() {
             </div>
             <div>
               {isEditingTitle ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="text"
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <textarea
                     value={titleEditValue}
                     onChange={(e) => setTitleEditValue(e.target.value)}
                     onKeyDown={handleTitleKeyDown}
                     onBlur={saveTitle}
                     autoFocus
+                    rows={3}
                     style={{
                       fontSize: '1.1rem',
                       fontWeight: 700,
                       border: '2px solid var(--color-primary)',
                       borderRadius: 'var(--radius-sm)',
-                      padding: '4px 8px',
+                      padding: '8px 12px',
                       background: 'var(--color-bg-default)',
                       color: 'var(--color-text-primary)',
                       outline: 'none',
-                      minWidth: '200px',
-                      maxWidth: '400px'
+                      minWidth: '300px',
+                      maxWidth: '500px',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      lineHeight: '1.4'
                     }}
                     placeholder="Enter product title..."
                   />
-                  <button
-                    onClick={saveTitle}
-                    style={{
-                      background: 'var(--color-success)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '4px 8px',
-                      fontSize: '0.7rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✓
-                  </button>
-                  <button
-                    onClick={cancelEditTitle}
-                    style={{
-                      background: 'var(--color-error)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '4px 8px',
-                      fontSize: '0.7rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✕
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button
+                      onClick={saveTitle}
+                      style={{
+                        background: 'var(--color-success)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '6px 10px',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        minWidth: '32px'
+                      }}
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={cancelEditTitle}
+                      style={{
+                        background: 'var(--color-error)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '6px 10px',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        minWidth: '32px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div
