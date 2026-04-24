@@ -309,7 +309,7 @@
 [data-theme="light"] textarea,
 [data-theme="light"] select {
   border: 1px solid #b5b9bd;
-  background: #ffffff;
+  background-color: #ffffff;
   color: #1a1a1a;
 }
 
