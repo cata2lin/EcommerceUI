@@ -75,6 +75,19 @@ export default function ProductPipeline() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleEditValue, setTitleEditValue] = useState('');
 
+  // Inline variant editing
+  const [isEditingVariant1, setIsEditingVariant1] = useState(false);
+  const [variant1EditValue, setVariant1EditValue] = useState('');
+  const [isEditingVariant2, setIsEditingVariant2] = useState(false);
+  const [variant2EditValue, setVariant2EditValue] = useState('');
+
+  // Navigation context
+  const [navigationContext, setNavigationContext] = useState<{
+    filteredIds: number[];
+    currentIndex: number;
+    filterInfo?: string;
+  } | null>(null);
+
   // Chart modal
   const [showChartModal, setShowChartModal] = useState(false);
   const [chartPeriod, setChartPeriod] = useState<DatePeriod>('30d');
@@ -136,6 +149,108 @@ export default function ProductPipeline() {
       e.preventDefault();
       cancelEditTitle();
     }
+  };
+
+  // ─── Variant Editing ────────────────────────────────────────
+  const startEditingVariant1 = () => {
+    const currentVariant = form.variant_1 || '';
+    setVariant1EditValue(currentVariant);
+    setIsEditingVariant1(true);
+  };
+
+  const saveVariant1 = () => {
+    updateField('variant_1', variant1EditValue.trim());
+    setIsEditingVariant1(false);
+  };
+
+  const cancelEditVariant1 = () => {
+    setIsEditingVariant1(false);
+    setVariant1EditValue('');
+  };
+
+  const handleVariant1KeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveVariant1();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditVariant1();
+    }
+  };
+
+  const startEditingVariant2 = () => {
+    const currentVariant = form.variant_2 || '';
+    setVariant2EditValue(currentVariant);
+    setIsEditingVariant2(true);
+  };
+
+  const saveVariant2 = () => {
+    updateField('variant_2', variant2EditValue.trim());
+    setIsEditingVariant2(false);
+  };
+
+  const cancelEditVariant2 = () => {
+    setIsEditingVariant2(false);
+    setVariant2EditValue('');
+  };
+
+  const handleVariant2KeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveVariant2();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditVariant2();
+    }
+  };
+
+  // ─── Navigation ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    // Check if we came from a filtered list via URL params or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromFilter = urlParams.get('from');
+    const filterData = localStorage.getItem('pipelineNavigationContext');
+    
+    if (fromFilter && filterData) {
+      try {
+        const context = JSON.parse(filterData);
+        const currentIndex = context.filteredIds.findIndex((pid: number) => pid === parseInt(id!));
+        if (currentIndex !== -1) {
+          setNavigationContext({
+            filteredIds: context.filteredIds,
+            currentIndex,
+            filterInfo: context.filterInfo
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to parse navigation context:', e);
+      }
+    }
+  }, [id]);
+
+  const navigateToProduct = (direction: 'prev' | 'next') => {
+    if (!navigationContext) return;
+    
+    let newIndex = navigationContext.currentIndex;
+    if (direction === 'prev' && newIndex > 0) {
+      newIndex--;
+    } else if (direction === 'next' && newIndex < navigationContext.filteredIds.length - 1) {
+      newIndex++;
+    } else {
+      return; // No navigation possible
+    }
+    
+    const newProductId = navigationContext.filteredIds[newIndex];
+    const updatedContext = {
+      ...navigationContext,
+      currentIndex: newIndex
+    };
+    
+    // Update localStorage with new context
+    localStorage.setItem('pipelineNavigationContext', JSON.stringify(updatedContext));
+    
+    // Navigate to the new product
+    navigate(`/product/${newProductId}/pipeline-details?from=filter`);
   };
 
   // ─── Save ────────────────────────────────────────────────────
@@ -275,6 +390,36 @@ export default function ProductPipeline() {
           <Link to="/" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>Products</Link>
           <span style={{ color: 'var(--color-text-muted)' }}>/</span>
           <span>Pipeline: {product.name}</span>
+          
+          {/* Navigation Controls */}
+          {navigationContext && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '16px' }}>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                {navigationContext.currentIndex + 1} of {navigationContext.filteredIds.length}
+                {navigationContext.filterInfo && (
+                  <span style={{ marginLeft: '4px' }}>({navigationContext.filterInfo})</span>
+                )}
+              </span>
+              <button 
+                className="btn btn-ghost btn-sm"
+                onClick={() => navigateToProduct('prev')}
+                disabled={navigationContext.currentIndex === 0}
+                style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                title="Previous product"
+              >
+                ← Prev
+              </button>
+              <button 
+                className="btn btn-ghost btn-sm"
+                onClick={() => navigateToProduct('next')}
+                disabled={navigationContext.currentIndex === navigationContext.filteredIds.length - 1}
+                style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                title="Next product"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button className="btn btn-primary btn-sm" onClick={() => handleSave('save')} disabled={saving}>
@@ -433,6 +578,115 @@ export default function ProductPipeline() {
               <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                 <p style={{ margin: '2px 0' }}>SKU: <span className="text-mono" style={{ color: 'var(--color-text-default)' }}>{form.sku || 'N/A'}</span></p>
                 <p style={{ margin: '2px 0' }}>Barcode: <span className="text-mono" style={{ color: 'var(--color-text-default)' }}>{form.barcode || 'N/A'}</span></p>
+                
+                {/* Variant 1 */}
+                <div style={{ margin: '2px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>Variant 1:</span>
+                  {isEditingVariant1 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <input
+                        type="text"
+                        value={variant1EditValue}
+                        onChange={(e) => setVariant1EditValue(e.target.value)}
+                        onKeyDown={handleVariant1KeyDown}
+                        onBlur={saveVariant1}
+                        autoFocus
+                        style={{
+                          border: '1px solid var(--color-primary)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '2px 6px',
+                          fontSize: '0.75rem',
+                          background: 'var(--color-bg-default)',
+                          color: 'var(--color-text-primary)',
+                          outline: 'none',
+                          minWidth: '120px'
+                        }}
+                        placeholder="Enter variant 1..."
+                      />
+                      <button onClick={saveVariant1} style={{ background: 'var(--color-success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✓</button>
+                      <button onClick={cancelEditVariant1} style={{ background: 'var(--color-error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✕</button>
+                    </div>
+                  ) : (
+                    <span
+                      className="text-mono"
+                      onClick={startEditingVariant1}
+                      style={{
+                        color: 'var(--color-text-default)',
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        borderRadius: 'var(--radius-sm)',
+                        transition: 'all 0.15s ease',
+                        minHeight: '16px',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--color-bg-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                      title="Click to edit variant 1"
+                    >
+                      {form.variant_1 || 'Click to add...'}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Variant 2 */}
+                <div style={{ margin: '2px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>Variant 2:</span>
+                  {isEditingVariant2 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <input
+                        type="text"
+                        value={variant2EditValue}
+                        onChange={(e) => setVariant2EditValue(e.target.value)}
+                        onKeyDown={handleVariant2KeyDown}
+                        onBlur={saveVariant2}
+                        autoFocus
+                        style={{
+                          border: '1px solid var(--color-primary)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '2px 6px',
+                          fontSize: '0.75rem',
+                          background: 'var(--color-bg-default)',
+                          color: 'var(--color-text-primary)',
+                          outline: 'none',
+                          minWidth: '120px'
+                        }}
+                        placeholder="Enter variant 2..."
+                      />
+                      <button onClick={saveVariant2} style={{ background: 'var(--color-success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✓</button>
+                      <button onClick={cancelEditVariant2} style={{ background: 'var(--color-error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '2px 4px', fontSize: '0.6rem', cursor: 'pointer' }}>✕</button>
+                    </div>
+                  ) : (
+                    <span
+                      className="text-mono"
+                      onClick={startEditingVariant2}
+                      style={{
+                        color: 'var(--color-text-default)',
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        borderRadius: 'var(--radius-sm)',
+                        transition: 'all 0.15s ease',
+                        minHeight: '16px',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--color-bg-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                      title="Click to edit variant 2"
+                    >
+                      {form.variant_2 || 'Click to add...'}
+                    </span>
+                  )}
+                </div>
+
                 {product.url && (
                   <a href={product.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-indigo-400)', fontSize: '0.75rem' }}>View on Site →</a>
                 )}

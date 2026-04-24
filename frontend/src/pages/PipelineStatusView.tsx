@@ -117,6 +117,23 @@ export default function PipelineStatusView() {
     setPage(1);
   };
 
+  // ─── Navigation Context Setup ──────────────────────────────────────────
+  const setupNavigationContext = (productId: number) => {
+    const filteredIds = products.map(p => p.id);
+    const filterInfo = Object.values(appliedFilters).some(v => v !== '') 
+      ? `${statusSlug} filtered` 
+      : statusSlug;
+    
+    const navigationContext = {
+      filteredIds,
+      filterInfo,
+      currentIndex: 0 // Will be updated in ProductPipeline
+    };
+    
+    localStorage.setItem('pipelineNavigationContext', JSON.stringify(navigationContext));
+    return `/product/${productId}/pipeline-details?from=filter`;
+  };
+
   useEffect(() => { setPage(1); setForm(emptyForm); setAppliedFilters(emptyForm); }, [slug]);
 
   const loadData = useCallback(async () => {
@@ -360,7 +377,12 @@ export default function PipelineStatusView() {
                 </td>
                 <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>{p.id}</td>
                 <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  <Link style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.8rem' }} to={`/product/${p.id}/pipeline-details`}>{p.title || `Product #${p.id}`}</Link>
+                  <span 
+                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer' }} 
+                    onClick={() => navigate(setupNavigationContext(p.id))}
+                  >
+                    {p.title || `Product #${p.id}`}
+                  </span>
                 </td>
                 <td style={{ ...tdStyle, fontSize: '0.75rem' }}>{p.parser_name}</td>
                 <td style={{ ...tdStyle, fontSize: '0.75rem' }}>{p.group_name || '—'}</td>
@@ -387,7 +409,13 @@ export default function PipelineStatusView() {
                   {p.suggested_quantity_min || p.suggested_quantity_max ? `${p.suggested_quantity_min ?? '?'}-${p.suggested_quantity_max ?? '?'}` : '—'}
                 </td>
                 <td style={tdStyle}>
-                  <Link className="btn btn-ghost btn-sm" to={`/product/${p.id}/pipeline-details`} style={{ padding: '2px 8px', fontSize: '0.7rem' }}>Open →</Link>
+                  <button 
+                    className="btn btn-ghost btn-sm" 
+                    onClick={() => navigate(setupNavigationContext(p.id))} 
+                    style={{ padding: '2px 8px', fontSize: '0.7rem' }}
+                  >
+                    Open →
+                  </button>
                 </td>
               </tr>
             ))}
