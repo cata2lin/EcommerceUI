@@ -183,7 +183,7 @@ export default function Sidebar() {
       <div className="sidebar-header">
         <div className="sidebar-logo">
           {Icons.sparkles}
-          <span>E-commerce BI</span>
+          <span>ARONA BI</span>
         </div>
         <button className="sidebar-theme-toggle" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
           {theme === 'dark' ? Icons.sun : Icons.moon}
