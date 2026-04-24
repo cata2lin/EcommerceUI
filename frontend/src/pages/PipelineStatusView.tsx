@@ -93,6 +93,17 @@ export default function PipelineStatusView() {
   const [page, setPage] = useState(1);
   const [goToPage, setGoToPage] = useState('');
 
+  // Lightbox for full-size product image
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  // Close lightbox on Escape
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightboxImage(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightboxImage]);
+
   // Load filter options once
   useEffect(() => {
     fetchConfig().then(res => {
@@ -373,15 +384,20 @@ export default function PipelineStatusView() {
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-hover)'}
                 onMouseLeave={e => e.currentTarget.style.background = ''}>
                 <td style={tdStyle}>
-                  <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--color-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div
+                    onClick={() => p.image && setLightboxImage(p.image)}
+                    style={{ width: 56, height: 56, borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--color-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: p.image ? 'zoom-in' : 'default', border: '1px solid var(--color-border-default)' }}
+                    title={p.image ? 'Click to enlarge' : ''}
+                  >
                     {p.image ? <img src={p.image} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>?</span>}
                   </div>
                 </td>
                 <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>{p.id}</td>
-                <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <td style={{ ...tdStyle, maxWidth: 260 }}>
                   <span 
-                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer' }} 
+                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.35, wordBreak: 'break-word' }} 
                     onClick={() => navigate(setupNavigationContext(p.id))}
+                    title={p.title || `Product #${p.id}`}
                   >
                     {p.title || `Product #${p.id}`}
                   </span>
@@ -425,6 +441,34 @@ export default function PipelineStatusView() {
         </table>
         {renderPagination()}
       </div>
+
+      {/* ── Image Lightbox Modal ── */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 'var(--spacing-6)', cursor: 'zoom-out',
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }}
+            style={{
+              position: 'absolute', top: 20, right: 24, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
+              width: 40, height: 40, borderRadius: '50%', fontSize: '1.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            title="Close (Esc)"
+          >
+            ✕
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Product"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '92vw', maxHeight: '92vh', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', cursor: 'default' }}
+          />
+        </div>
+      )}
     </div>
   );
 }
