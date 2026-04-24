@@ -92,6 +92,23 @@ const Icons = {
       <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   ),
+  checkout: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <path d="M16 10a4 4 0 01-8 0" />
+    </svg>
+  ),
+  package: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round">
+      <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
+      <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+      <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  ),
   sun: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
       strokeLinecap="round" strokeLinejoin="round">
@@ -261,6 +278,17 @@ export default function Sidebar() {
               )}
             </NavLink>
           ))}
+        </div>
+
+        {/* ─── Purchase Orders Section ─── */}
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">Purchase Orders</div>
+
+          <NavLink to="/purchase-orders/approved-items" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            {Icons.package}
+            <span>Approved Items</span>
+            <span className="sidebar-badge sidebar-badge-new">Coming Soon</span>
+          </NavLink>
         </div>
 
         {/* ─── System Section ─── */}

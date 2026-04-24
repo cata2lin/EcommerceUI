@@ -23,6 +23,7 @@ import ParserStatus from './pages/ParserStatus';
 import Config from './pages/Config';
 import SystemMonitoring from './pages/SystemMonitoring';
 import Deployments from './pages/Deployments';
+import ComingSoon from './pages/ComingSoon';
 
 // Import enhanced styles
 import './components/EnhancedUI.css';
@@ -63,6 +64,22 @@ function AppRoutes() {
           <Route path="/config" element={<Config />} />
           <Route path="/system" element={<SystemMonitoring />} />
           <Route path="/deployments" element={<Deployments />} />
+          <Route 
+            path="/purchase-orders/approved-items" 
+            element={
+              <ComingSoon 
+                title="Approved Items"
+                description="Manage and track approved purchase orders ready for procurement."
+                features={[
+                  "View approved product listings",
+                  "Generate purchase orders",
+                  "Track supplier communications",
+                  "Manage inventory requirements",
+                  "Export order summaries"
+                ]}
+              />
+            } 
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

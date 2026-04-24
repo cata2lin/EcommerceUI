@@ -21,7 +21,7 @@ export function useKeyboardShortcuts({ onToggleCommandPalette }: UseKeyboardShor
   const navigate = useNavigate();
   
   // Try to use notifications, but don't crash if provider is not available
-  let showInfo = () => {};
+  let showInfo = (_title: string, _message?: string) => {};
   try {
     const notifications = useNotifications();
     showInfo = notifications.showInfo;
@@ -74,6 +74,12 @@ export function useKeyboardShortcuts({ onToggleCommandPalette }: UseKeyboardShor
       key: 'g+s',
       description: 'Go to System Monitoring',
       action: () => navigate('/system'),
+      category: 'Navigation'
+    },
+    {
+      key: 'g+u',
+      description: 'Go to Purchase Orders',
+      action: () => navigate('/purchase-orders/approved-items'),
       category: 'Navigation'
     },
     

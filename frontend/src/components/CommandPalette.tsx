@@ -133,6 +133,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       action: () => { navigate('/deployments'); onClose(); },
       keywords: ['deployments', 'deploy', 'cicd', 'history']
     },
+    {
+      id: 'nav-approved-items',
+      title: 'Approved Items',
+      subtitle: 'Purchase order management',
+      category: 'Purchase Orders',
+      icon: '📦',
+      action: () => { navigate('/purchase-orders/approved-items'); onClose(); },
+      keywords: ['approved', 'items', 'purchase', 'orders', 'procurement']
+    },
 
     // Action Commands
     {
