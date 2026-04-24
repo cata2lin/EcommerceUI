@@ -71,6 +71,10 @@ export default function ProductPipeline() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [form, setForm] = useState<any>({});
 
+  // Inline title editing
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleEditValue, setTitleEditValue] = useState('');
+
   // Chart modal
   const [showChartModal, setShowChartModal] = useState(false);
   const [chartPeriod, setChartPeriod] = useState<DatePeriod>('30d');
@@ -103,6 +107,35 @@ export default function ProductPipeline() {
 
   const updateField = (key: string, value: any) => {
     setForm((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  // ─── Title Editing ──────────────────────────────────────────
+  const startEditingTitle = () => {
+    const currentTitle = form.title || data?.product?.name || '';
+    setTitleEditValue(currentTitle);
+    setIsEditingTitle(true);
+  };
+
+  const saveTitle = () => {
+    if (titleEditValue.trim() !== '') {
+      updateField('title', titleEditValue.trim());
+    }
+    setIsEditingTitle(false);
+  };
+
+  const cancelEditTitle = () => {
+    setIsEditingTitle(false);
+    setTitleEditValue('');
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveTitle();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditTitle();
+    }
   };
 
   // ─── Save ────────────────────────────────────────────────────
@@ -288,7 +321,108 @@ export default function ProductPipeline() {
               {product.image ? <img src={product.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ color: 'var(--color-text-muted)' }}>?</span>}
             </div>
             <div>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{form.title || product.name}</h2>
+              {isEditingTitle ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={titleEditValue}
+                    onChange={(e) => setTitleEditValue(e.target.value)}
+                    onKeyDown={handleTitleKeyDown}
+                    onBlur={saveTitle}
+                    autoFocus
+                    style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 700,
+                      border: '2px solid var(--color-primary)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '4px 8px',
+                      background: 'var(--color-bg-default)',
+                      color: 'var(--color-text-primary)',
+                      outline: 'none',
+                      minWidth: '200px',
+                      maxWidth: '400px'
+                    }}
+                    placeholder="Enter product title..."
+                  />
+                  <button
+                    onClick={saveTitle}
+                    style={{
+                      background: 'var(--color-success)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '4px 8px',
+                      fontSize: '0.7rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={cancelEditTitle}
+                    style={{
+                      background: 'var(--color-error)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '4px 8px',
+                      fontSize: '0.7rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={startEditingTitle}
+                  style={{
+                    fontSize: '1.1rem',
+                    fontWeight: 700,
+                    margin: 0,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '4px 8px 4px 0',
+                    borderRadius: 'var(--radius-sm)',
+                    transition: 'all 0.15s ease',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-bg-hover)';
+                    e.currentTarget.style.paddingLeft = '8px';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.paddingLeft = '0';
+                  }}
+                  title="Click to edit title"
+                >
+                  <span>{form.title || product.name}</span>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{
+                      opacity: 0.5,
+                      transition: 'opacity 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '0.5';
+                    }}
+                  >
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </div>
+              )}
               <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                 <p style={{ margin: '2px 0' }}>SKU: <span className="text-mono" style={{ color: 'var(--color-text-default)' }}>{form.sku || 'N/A'}</span></p>
                 <p style={{ margin: '2px 0' }}>Barcode: <span className="text-mono" style={{ color: 'var(--color-text-default)' }}>{form.barcode || 'N/A'}</span></p>
