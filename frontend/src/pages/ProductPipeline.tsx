@@ -23,7 +23,7 @@ const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 
 const PIPELINE_STATUSES = [
   'None', 'New', 'Waiting for Supplier Info', 'Financial Review',
-  'Market Research', 'Approved', 'Hold', 'Discarded',
+  'Approved', 'Hold', 'Discarded',
 ];
 
 type DatePeriod = 'all' | '7d' | '30d' | '90d' | 'custom';
@@ -272,7 +272,7 @@ export default function ProductPipeline() {
     let targetStatus = form.status || 'New';
     if (action === 'process') {
       const idx = PIPELINE_STATUSES.indexOf(targetStatus);
-      if (idx > -1 && idx < PIPELINE_STATUSES.length - 1 && !['Market Research', 'Approved', 'Hold', 'Discarded'].includes(targetStatus)) {
+      if (idx > -1 && idx < PIPELINE_STATUSES.length - 1 && !['Approved', 'Hold', 'Discarded'].includes(targetStatus)) {
         targetStatus = PIPELINE_STATUSES[idx + 1];
       }
     } else if (action === 'approve') {
@@ -440,12 +440,7 @@ export default function ProductPipeline() {
             {saving && <span className="spinner-sm" />}
             💾 Save
           </button>
-          {currentStatus === 'Market Research' ? (
-            <>
-              <button className="btn btn-sm" style={{ background: 'var(--color-success)', color: '#fff' }} onClick={() => handleSave('approve')}>✓ Approve</button>
-              <button className="btn btn-sm" style={{ background: 'var(--color-error)', color: '#fff' }} onClick={() => handleSave('discard')}>✗ Discard</button>
-            </>
-          ) : !['Approved', 'Hold', 'Discarded', 'None'].includes(currentStatus) && (
+          {!['Approved', 'Hold', 'Discarded', 'None'].includes(currentStatus) && (
             <button className="btn btn-sm" style={{ background: 'var(--color-indigo-600)', color: '#fff' }} onClick={() => handleSave('process')}>
               Save & Process →
             </button>
@@ -1040,29 +1035,6 @@ export default function ProductPipeline() {
                 <label className="form-label" style={{ fontSize: '0.75rem' }}>Landed Cost</label>
                 <p style={{ color: 'var(--color-indigo-400)', fontWeight: 700, fontSize: '0.95rem', marginTop: 6 }}>${calculateLandedCost()}</p>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Market Research */}
-        {shouldShowSection('Market Research', currentStatus) && (
-          <div className="card" style={{ borderLeft: '4px solid var(--color-success)', background: 'rgba(34,197,94,0.05)' }}>
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-success)', borderBottom: '1px solid rgba(34,197,94,0.2)', paddingBottom: 'var(--spacing-2)', marginBottom: 'var(--spacing-3)' }}>
-              Status: Market Research
-            </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-3)' }}>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>Top Keywords</label>
-                <textarea className="textarea" rows={3} value={form.top_keywords || ''} onChange={e => updateField('top_keywords', e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>Main Competitors</label>
-                <textarea className="textarea" rows={3} value={form.main_competitors || ''} onChange={e => updateField('main_competitors', e.target.value)} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '0.75rem' }}>Market Insights</label>
-              <textarea className="textarea" rows={2} value={form.market_research_insights || ''} onChange={e => updateField('market_research_insights', e.target.value)} />
             </div>
           </div>
         )}

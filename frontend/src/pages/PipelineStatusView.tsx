@@ -10,7 +10,6 @@ const STATUSES = [
   { slug: 'new', label: 'New' },
   { slug: 'supplier-info', label: 'Supplier Info' },
   { slug: 'financial-review', label: 'Financial Review' },
-  { slug: 'market-research', label: 'Market Research' },
   { slug: 'approved', label: 'Approved' },
   { slug: 'hold', label: 'Hold' },
   { slug: 'discarded', label: 'Discarded' },
