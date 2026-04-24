@@ -119,15 +119,18 @@ export default function PipelineStatusView() {
 
   // ─── Navigation Context Setup ──────────────────────────────────────────
   const setupNavigationContext = (productId: number) => {
+    const currentStatusLabel = STATUSES.find(s => s.slug === slug)?.label || slug || '';
     const filteredIds = products.map(p => p.id);
     const filterInfo = Object.values(appliedFilters).some(v => v !== '') 
-      ? `${statusSlug} filtered` 
-      : statusSlug;
+      ? `${slug} filtered` 
+      : slug;
     
     const navigationContext = {
       filteredIds,
       filterInfo,
-      currentIndex: 0 // Will be updated in ProductPipeline
+      currentIndex: 0, // Will be updated in ProductPipeline
+      returnPath: `/pipeline/${slug}`,
+      returnLabel: `Pipeline: ${currentStatusLabel}`,
     };
     
     localStorage.setItem('pipelineNavigationContext', JSON.stringify(navigationContext));

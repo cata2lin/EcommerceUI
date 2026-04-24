@@ -116,7 +116,9 @@ export default function ApprovedItems() {
     const navigationContext = {
       filteredIds,
       filterInfo,
-      currentIndex: 0 // Will be updated in ProductPipeline
+      currentIndex: 0, // Will be updated in ProductPipeline
+      returnPath: '/purchase-orders/approved-items',
+      returnLabel: 'Approved Items',
     };
     
     localStorage.setItem('pipelineNavigationContext', JSON.stringify(navigationContext));

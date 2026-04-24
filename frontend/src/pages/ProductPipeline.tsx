@@ -86,6 +86,8 @@ export default function ProductPipeline() {
     filteredIds: number[];
     currentIndex: number;
     filterInfo?: string;
+    returnPath?: string;
+    returnLabel?: string;
   } | null>(null);
 
   // Chart modal
@@ -225,7 +227,9 @@ export default function ProductPipeline() {
           setNavigationContext({
             filteredIds: context.filteredIds,
             currentIndex,
-            filterInfo: context.filterInfo
+            filterInfo: context.filterInfo,
+            returnPath: context.returnPath,
+            returnLabel: context.returnLabel,
           });
         }
       } catch (e) {
@@ -395,7 +399,9 @@ export default function ProductPipeline() {
       {/* ─── Breadcrumb & Actions ── */}
       <div className="page-header">
         <div className="flex items-center gap-3" style={{ fontSize: '0.875rem' }}>
-          <Link to="/" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>Products</Link>
+          <Link to={navigationContext?.returnPath || "/"} style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>
+            {navigationContext?.returnLabel || 'Products'}
+          </Link>
           <span style={{ color: 'var(--color-text-muted)' }}>/</span>
           <span>Pipeline: {product.name}</span>
           
