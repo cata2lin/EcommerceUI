@@ -87,7 +87,9 @@ export default function PurchaseOrdersList() {
       const res = await createPurchaseOrder({ title: null, priority: 'STANDARD', items: [] });
       navigate(`/purchase-orders/${res.data.id}`);
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Failed to create PO');
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail || e?.message || 'Unknown error';
+      alert(`Failed to create PO${status ? ` (${status})` : ''}: ${detail}`);
     } finally {
       setCreating(false);
     }

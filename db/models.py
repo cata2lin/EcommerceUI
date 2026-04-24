@@ -4,7 +4,7 @@ SQLAlchemy ORM models mapping to the existing PostgreSQL schema.
 """
 from sqlalchemy import (
     Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey,
-    Table, Numeric, func
+    Table, Numeric, Sequence, func
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -193,7 +193,13 @@ class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    number = Column(Integer, unique=True, nullable=False)
+    number = Column(
+        Integer,
+        Sequence("po_number_seq"),
+        unique=True,
+        nullable=False,
+        server_default=func.nextval("po_number_seq"),
+    )
     title = Column(Text)
     priority = Column(String(16), nullable=False, default="STANDARD")
     status = Column(String(32), nullable=False, default="DRAFT")
