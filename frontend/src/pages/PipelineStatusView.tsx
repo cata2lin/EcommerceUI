@@ -393,9 +393,9 @@ export default function PipelineStatusView() {
                   </div>
                 </td>
                 <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>{p.id}</td>
-                <td style={{ ...tdStyle, maxWidth: 260 }}>
+                <td style={{ ...tdStyle, width: 200, maxWidth: 200 }}>
                   <span 
-                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.35, wordBreak: 'break-word' }} 
+                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.72rem', cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3, wordBreak: 'break-word', width: '100%' }} 
                     onClick={() => navigate(setupNavigationContext(p.id))}
                     title={p.title || `Product #${p.id}`}
                   >
