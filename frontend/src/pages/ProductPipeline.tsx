@@ -141,10 +141,12 @@ export default function ProductPipeline() {
     setTitleEditValue('');
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+  const handleTitleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       saveTitle();
+      // Auto-save to database
+      await handleSave();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       cancelEditTitle();
@@ -168,10 +170,12 @@ export default function ProductPipeline() {
     setVariant1EditValue('');
   };
 
-  const handleVariant1KeyDown = (e: React.KeyboardEvent) => {
+  const handleVariant1KeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       saveVariant1();
+      // Auto-save to database
+      await handleSave();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       cancelEditVariant1();
@@ -194,10 +198,12 @@ export default function ProductPipeline() {
     setVariant2EditValue('');
   };
 
-  const handleVariant2KeyDown = (e: React.KeyboardEvent) => {
+  const handleVariant2KeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       saveVariant2();
+      // Auto-save to database
+      await handleSave();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       cancelEditVariant2();
@@ -296,6 +302,8 @@ export default function ProductPipeline() {
         monthly_sales_index: form.monthly_sales_index,
         assigned_category_ids: form.selectedCategories || [],
         group_id: form.groupId,
+        variant_1: form.variant_1,
+        variant_2: form.variant_2,
         new_pipeline_status: targetStatus,
       };
 
@@ -456,7 +464,7 @@ export default function ProductPipeline() {
 
       {/* ─── Product Header Card ── */}
       <div className="card" style={{ marginBottom: 'var(--spacing-4)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--spacing-4)', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: 'var(--spacing-4)', alignItems: 'start' }}>
           {/* Left: Image + Info */}
           <div className="flex gap-4">
             <div style={{
