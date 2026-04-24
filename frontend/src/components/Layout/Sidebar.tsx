@@ -287,7 +287,6 @@ export default function Sidebar() {
           <NavLink to="/purchase-orders/approved-items" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             {Icons.package}
             <span>Approved Items</span>
-            <span className="sidebar-badge sidebar-badge-new">Coming Soon</span>
           </NavLink>
         </div>
 

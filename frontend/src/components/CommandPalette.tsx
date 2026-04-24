@@ -136,7 +136,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     {
       id: 'nav-approved-items',
       title: 'Approved Items',
-      subtitle: 'Purchase order management',
+      subtitle: 'View approved products for procurement',
       category: 'Purchase Orders',
       icon: '📦',
       action: () => { navigate('/purchase-orders/approved-items'); onClose(); },
