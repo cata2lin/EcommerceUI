@@ -3,7 +3,7 @@
  * status tabs, comprehensive filters, financial KPIs, and Excel export.
  */
 import { useState, useCallback, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchPipelineStatus, exportPipelineExcel, fetchConfig } from '../api';
 
 const STATUSES = [

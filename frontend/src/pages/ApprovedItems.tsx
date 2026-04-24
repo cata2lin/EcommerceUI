@@ -3,7 +3,7 @@
  * Uses the same structure and logic as PipelineStatusView but filters for approved products only.
  */
 import { useState, useCallback, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { fetchPipelineStatus, exportPipelineExcel, fetchConfig } from '../api';
 
 const RANKING_OPTIONS = [
