@@ -167,107 +167,213 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   LIGHT THEME OVERRIDES
+   LIGHT THEME OVERRIDES — Shopify / Polaris-inspired palette
+   Focus: strong contrast, crisp borders, legible badges
    ═══════════════════════════════════════════════════════════ */
 [data-theme="light"] {
-  /* Backgrounds */
-  --color-bg-primary: #f9fafb;
+  /* Backgrounds — warmer off-white app bg, pure white cards for clear layering */
+  --color-bg-primary: #f1f2f4;
   --color-bg-surface: #ffffff;
   --color-bg-card: #ffffff;
-  --color-bg-hover: #f1f5f9;
+  --color-bg-hover: #f1f2f4;
   --color-bg-input: #ffffff;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f6f6f7;
 
-  /* Text — solid dark for readability */
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #1e293b;
-  --color-text-muted: #334155;
+  /* Text — near-black primary, distinct secondary, readable muted (AA+ contrast) */
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #303030;
+  --color-text-muted: #616161;
   --color-text-inverse: #ffffff;
 
-  /* Accent */
-  --color-accent-primary: #4f46e5;
-  --color-accent-hover: #6366f1;
-  --color-accent-muted: #818cf8;
+  /* Accent — keep indigo brand, slightly darker for contrast on white */
+  --color-accent-primary: #4338ca;
+  --color-accent-hover: #3730a3;
+  --color-accent-muted: #4f46e5;
 
-  /* Borders */
-  --color-border-default: #e2e8f0;
-  --color-border-hover: #cbd5e1;
-  --color-border-focus: var(--color-indigo-500);
+  /* Borders — crisp, visible dividers (Shopify uses #e1e3e5) */
+  --color-border-default: #dcdfe3;
+  --color-border-hover: #b5b9bd;
+  --color-border-focus: #4338ca;
+  --color-border: #dcdfe3;
 
   /* Buttons */
-  --button-primary-bg: #4f46e5;
-  --button-primary-bg-hover: #6366f1;
-  --button-ghost-bg-hover: #f1f5f9;
+  --button-primary-bg: #4338ca;
+  --button-primary-bg-hover: #3730a3;
+  --button-ghost-bg-hover: #f1f2f4;
 
   /* Cards */
   --card-bg: #ffffff;
-  --card-border: #e2e8f0;
+  --card-border: #dcdfe3;
 
   /* Sidebar */
-  --sidebar-bg: #ffffff;
-  --sidebar-active-bg: #4f46e5;
-  --sidebar-hover-bg: rgba(79, 70, 229, 0.06);
+  --sidebar-bg: #f6f6f7;
+  --sidebar-active-bg: #4338ca;
+  --sidebar-hover-bg: rgba(67, 56, 202, 0.08);
 
-  /* Table */
-  --table-header-bg: #f8fafc;
-  --table-row-hover: #f1f5f9;
-  --table-border: #e2e8f0;
+  /* Table — clear header separation */
+  --table-header-bg: #f6f6f7;
+  --table-row-hover: #f6f6f7;
+  --table-border: #dcdfe3;
 
-  /* Badges - slightly stronger on light bg */
-  --badge-healthy-bg: rgba(16, 185, 129, 0.12);
-  --badge-healthy-text: #059669;
-  --badge-warning-bg: rgba(245, 158, 11, 0.12);
-  --badge-warning-text: #d97706;
-  --badge-error-bg: rgba(239, 68, 68, 0.12);
-  --badge-error-text: #dc2626;
-  --badge-info-bg: rgba(6, 182, 212, 0.12);
-  --badge-info-text: #0891b2;
-  --badge-neutral-bg: rgba(100, 116, 139, 0.12);
-  --badge-neutral-text: #475569;
+  /* Badges — strong, saturated colors (Polaris-style) */
+  --badge-healthy-bg: #e1f5ea;
+  --badge-healthy-text: #0a5c36;
+  --badge-warning-bg: #ffeccf;
+  --badge-warning-text: #8a4b00;
+  --badge-error-bg: #fde2e1;
+  --badge-error-text: #8e1f15;
+  --badge-info-bg: #d9edff;
+  --badge-info-text: #0e4c91;
+  --badge-neutral-bg: #e4e5e7;
+  --badge-neutral-text: #303030;
 
-  /* Shadows are more visible on light */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
-  --shadow-glow-indigo: 0 0 20px rgba(79, 70, 229, 0.2);
-  --shadow-glow-emerald: 0 0 20px rgba(16, 185, 129, 0.2);
+  /* Shadows — subtle but visible on light bg */
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-glow-indigo: 0 0 0 3px rgba(67, 56, 202, 0.15);
+  --shadow-glow-emerald: 0 0 0 3px rgba(16, 185, 129, 0.15);
 
-  /* Status colors for text on light */
-  --color-status-success: #059669;
-  --color-status-warning: #d97706;
-  --color-status-error: #dc2626;
-  --color-status-info: #0891b2;
+  /* Status — darker, AA-compliant text colors */
+  --color-status-success: #0a5c36;
+  --color-status-warning: #8a4b00;
+  --color-status-error: #8e1f15;
+  --color-status-info: #0e4c91;
 
-  /* Input placeholder stays subtle */
-  --input-placeholder: #94a3b8;
+  /* Input placeholder */
+  --input-placeholder: #8a8a8a;
 }
 
 /* Light theme card shadows */
 [data-theme="light"] .card {
   box-shadow: var(--shadow-sm);
   backdrop-filter: none;
+  border-radius: var(--radius-lg);
 }
 
 [data-theme="light"] .card:hover {
   box-shadow: var(--shadow-md);
+  border-color: var(--color-border-default);
+}
+
+/* Stronger, more readable body text in light mode */
+[data-theme="light"] body {
+  font-weight: 400;
+  color: #1a1a1a;
+}
+
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3 {
+  color: #1a1a1a;
+  letter-spacing: -0.01em;
+}
+
+/* Table: tighter separator lines, bolder header text */
+[data-theme="light"] th {
+  color: #303030 !important;
+  font-weight: 600 !important;
+  background: var(--table-header-bg) !important;
+  border-bottom: 1px solid var(--table-border) !important;
+}
+
+[data-theme="light"] td {
+  color: #1a1a1a;
+  border-bottom: 1px solid #ebecee !important;
+}
+
+/* Buttons — sharper contrast */
+[data-theme="light"] .btn-primary {
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .btn-ghost {
+  color: #303030;
+  border: 1px solid var(--color-border-default);
+  background: #ffffff;
+}
+
+[data-theme="light"] .btn-ghost:hover {
+  background: #f6f6f7;
+  border-color: #b5b9bd;
+}
+
+/* Inputs — visible border on white */
+[data-theme="light"] .input,
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="number"],
+[data-theme="light"] input[type="search"],
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  border: 1px solid #b5b9bd;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+[data-theme="light"] .input:focus,
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus {
+  border-color: #4338ca;
+  box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.15);
+  outline: none;
+}
+
+/* Badges — pill shape with subtle inset ring (Shopify/Polaris style) */
+[data-theme="light"] .badge {
+  font-weight: 500;
+  border: 1px solid currentColor;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/* Sidebar — Shopify-like subtle off-white bg, stronger active state */
+[data-theme="light"] .app-sidebar {
+  background: #f6f6f7;
+  border-right: 1px solid var(--color-border-default);
+}
+
+[data-theme="light"] .app-sidebar a,
+[data-theme="light"] .app-sidebar button {
+  color: #303030;
+}
+
+[data-theme="light"] .app-sidebar a:hover,
+[data-theme="light"] .app-sidebar button:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #1a1a1a;
 }
 
 /* Light skeleton */
 [data-theme="light"] .skeleton {
-  background: #e2e8f0;
+  background: #e4e5e7;
 }
 
 /* Light scrollbar */
 [data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #b5b9bd;
 }
 
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #6d7175;
 }
 
 /* Select dropdown arrow for light */
 [data-theme="light"] .select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23303030' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+}
+
+/* Links use accent color with strong contrast */
+[data-theme="light"] a {
+  color: #4338ca;
+}
+
+[data-theme="light"] a:hover {
+  color: #3730a3;
+  text-decoration: underline;
 }
 
 
