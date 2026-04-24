@@ -391,9 +391,9 @@ export default function PipelineStatusView() {
                     {p.image ? <img src={p.image} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>?</span>}
                   </div>
                 </td>
-                <td style={{ ...tdStyle, width: 220, maxWidth: 220, whiteSpace: 'normal' }}>
+                <td style={{ ...tdStyle, width: 320, maxWidth: 320, whiteSpace: 'normal' }}>
                   <span 
-                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.72rem', cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3, wordBreak: 'break-word', width: '100%' }} 
+                    style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.82rem', cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.35, wordBreak: 'break-word', width: '100%' }} 
                     onClick={() => navigate(setupNavigationContext(p.id))}
                     title={p.title || `Product #${p.id}`}
                   >
