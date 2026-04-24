@@ -399,11 +399,27 @@ export default function ProductPipeline() {
       {/* ─── Breadcrumb & Actions ── */}
       <div className="page-header">
         <div className="flex items-center gap-3" style={{ fontSize: '0.875rem' }}>
-          <Link to={navigationContext?.returnPath || "/"} style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>
-            {navigationContext?.returnLabel || 'Products'}
+          <Link
+            to={navigationContext?.returnPath || "/"}
+            style={{
+              color: 'var(--color-text-muted)',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border-default)',
+              background: 'transparent',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg-hover)'; e.currentTarget.style.color = 'var(--color-text-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+            title={`Back to ${navigationContext?.returnLabel || 'Products'}`}
+          >
+            ← Back
           </Link>
-          <span style={{ color: 'var(--color-text-muted)' }}>/</span>
-          <span>Pipeline: {product.name}</span>
           
           {/* Navigation Controls */}
           {navigationContext && (
