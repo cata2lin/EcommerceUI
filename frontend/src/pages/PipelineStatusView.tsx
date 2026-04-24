@@ -61,7 +61,6 @@ const emptyForm = {
 
 /** Sortable columns config */
 const SORT_COLUMNS: { key: string; label: string; sortable: boolean }[] = [
-  { key: 'id', label: 'ID', sortable: true },
   { key: 'title', label: 'Title', sortable: true },
   { key: 'parser', label: 'Store', sortable: true },
   { key: 'group', label: 'Group', sortable: true },
@@ -375,10 +374,10 @@ export default function PipelineStatusView() {
           <tbody>
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i}><td colSpan={11} style={tdStyle}><div className="skeleton skeleton-text" style={{ width: `${50 + Math.random() * 40}%` }} /></td></tr>
+                <tr key={i}><td colSpan={10} style={tdStyle}><div className="skeleton skeleton-text" style={{ width: `${50 + Math.random() * 40}%` }} /></td></tr>
               ))
             ) : products.length === 0 ? (
-              <tr><td colSpan={11} style={{ ...tdStyle, textAlign: 'center', padding: 'var(--spacing-12)', color: 'var(--color-text-muted)' }}>No products at this status</td></tr>
+              <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: 'var(--spacing-12)', color: 'var(--color-text-muted)' }}>No products at this status</td></tr>
             ) : products.map(p => (
               <tr key={p.id} style={{ transition: 'background 0.15s' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-hover)'}
@@ -392,8 +391,7 @@ export default function PipelineStatusView() {
                     {p.image ? <img src={p.image} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>?</span>}
                   </div>
                 </td>
-                <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>{p.id}</td>
-                <td style={{ ...tdStyle, width: 200, maxWidth: 200 }}>
+                <td style={{ ...tdStyle, width: 220, maxWidth: 220, whiteSpace: 'normal' }}>
                   <span 
                     style={{ color: 'var(--color-text-primary)', textDecoration: 'none', fontWeight: 500, fontSize: '0.72rem', cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3, wordBreak: 'break-word', width: '100%' }} 
                     onClick={() => navigate(setupNavigationContext(p.id))}
