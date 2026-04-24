@@ -1,0 +1,442 @@
+/**
+ * Bulk Actions Styles — Multi-select interface with smooth animations
+ */
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--card-bg);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-4);
+  animation: bulkActionsSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(12px);
+  box-shadow: 
+    0 4px 12px rgba(99, 102, 241, 0.15),
+    0 0 0 1px rgba(99, 102, 241, 0.1);
+}
+
+.bulk-actions-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.bulk-select-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.bulk-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: var(--color-white);
+}
+
+.bulk-checkbox.checked {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.bulk-checkbox.indeterminate {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.bulk-checkbox:hover {
+  border-color: var(--color-accent-hover);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.bulk-checkbox.checked:hover,
+.bulk-checkbox.indeterminate:hover {
+  background: var(--color-accent-hover);
+}
+
+.checkbox-empty {
+  width: 12px;
+  height: 12px;
+}
+
+.bulk-count {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent-primary);
+}
+
+.bulk-clear {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bulk-clear:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--color-text-primary);
+}
+
+.bulk-actions-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.bulk-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.bulk-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bulk-action-default {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-default);
+  color: var(--color-text-primary);
+}
+
+.bulk-action-default:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+}
+
+.bulk-action-primary {
+  background: var(--color-accent-primary);
+  color: var(--color-white);
+}
+
+.bulk-action-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.bulk-action-warning {
+  background: var(--color-amber-500);
+  color: var(--color-white);
+}
+
+.bulk-action-warning:hover:not(:disabled) {
+  background: var(--color-amber-400);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.bulk-action-danger {
+  background: var(--color-red-500);
+  color: var(--color-white);
+}
+
+.bulk-action-danger:hover:not(:disabled) {
+  background: var(--color-red-400);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.bulk-action-icon {
+  font-size: 14px;
+}
+
+.bulk-action-label {
+  font-size: 0.8125rem;
+}
+
+.bulk-action-loading {
+  position: absolute;
+  right: var(--spacing-2);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.loading-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-top: 1.5px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Dropdown */
+.bulk-dropdown {
+  position: relative;
+}
+
+.bulk-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  padding: var(--spacing-1);
+  min-width: 150px;
+  z-index: 1000;
+  animation: dropdownSlideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bulk-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  position: relative;
+  text-align: left;
+}
+
+.bulk-dropdown-item:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.bulk-dropdown-default {
+  color: var(--color-text-primary);
+}
+
+.bulk-dropdown-warning {
+  color: var(--color-amber-400);
+}
+
+.bulk-dropdown-danger {
+  color: var(--color-red-400);
+}
+
+/* Confirmation Modal */
+.bulk-confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-4);
+  animation: overlayFadeIn 0.2s ease;
+}
+
+.bulk-confirmation-modal {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  max-width: 400px;
+  width: 100%;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bulk-confirmation-header {
+  padding: var(--spacing-6) var(--spacing-6) var(--spacing-4);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.bulk-confirmation-icon {
+  font-size: 1.5rem;
+}
+
+.bulk-confirmation-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.bulk-confirmation-content {
+  padding: 0 var(--spacing-6) var(--spacing-6);
+}
+
+.bulk-confirmation-content p {
+  margin: 0 0 var(--spacing-3) 0;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.bulk-confirmation-warning {
+  color: var(--color-amber-400);
+  font-weight: 500;
+  margin-bottom: 0 !important;
+}
+
+.bulk-confirmation-actions {
+  padding: var(--spacing-4) var(--spacing-6);
+  border-top: 1px solid var(--color-border-default);
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+}
+
+/* Animations */
+@keyframes bulkActionsSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .bulk-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-3);
+  }
+
+  .bulk-actions-info {
+    justify-content: space-between;
+  }
+
+  .bulk-actions-buttons {
+    justify-content: flex-start;
+  }
+
+  .bulk-dropdown-menu {
+    right: auto;
+    left: 0;
+  }
+
+  .bulk-confirmation-modal {
+    margin: var(--spacing-4);
+    max-width: none;
+  }
+
+  .bulk-confirmation-actions {
+    flex-direction: column-reverse;
+  }
+
+  .bulk-confirmation-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Light theme adjustments */
+:root[data-theme="light"] .bulk-actions {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--color-accent-primary);
+}
+
+:root[data-theme="light"] .bulk-action-default {
+  background: var(--color-white);
+  border-color: var(--color-slate-300);
+}
+
+:root[data-theme="light"] .bulk-dropdown-menu {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--color-slate-200);
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .bulk-actions,
+  .bulk-dropdown-menu,
+  .bulk-confirmation-overlay,
+  .bulk-confirmation-modal,
+  .loading-spinner-sm {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bulk-actions {
+    border: 2px solid var(--color-accent-primary);
+    background: var(--color-bg-primary);
+  }
+  
+  .bulk-checkbox {
+    border-width: 2px;
+  }
+  
+  .bulk-action-btn {
+    border-width: 2px;
+  }
+  
+  .bulk-dropdown-menu {
+    border: 2px solid var(--color-text-primary);
+    background: var(--color-bg-primary);
+  }
+}

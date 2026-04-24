@@ -33,6 +33,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8000",
         FRONTEND_DEV_URL,
+        "http://localhost:5174",  # Allow frontend on port 5174
     ],
     allow_credentials=True,
     allow_methods=["*"],
