@@ -93,6 +93,33 @@ async def get_pipeline_details(
         "SELECT value, timestamp FROM price_history WHERE product_id = :pid ORDER BY timestamp"
     ), {"pid": product_id}).fetchall()
 
+    # Pre-computed sales stats from intel.product_sales_stats (stock-derived velocity metrics)
+    sales_stats = None
+    try:
+        stats_row = db.execute(text(
+            "SELECT * FROM intel.product_sales_stats WHERE product_id = :pid"
+        ), {"pid": product_id}).fetchone()
+        if stats_row:
+            m = stats_row._mapping
+            sales_stats = {
+                "total_sold": int(m["total_sold"]) if m["total_sold"] is not None else 0,
+                "total_restocked": int(m["total_restocked"]) if m["total_restocked"] is not None else 0,
+                "data_points": int(m["data_points"]) if m["data_points"] is not None else 0,
+                "first_seen": m["first_seen"].isoformat() if m["first_seen"] else None,
+                "last_seen": m["last_seen"].isoformat() if m["last_seen"] else None,
+                "span_days": int(m["span_days"]) if m["span_days"] is not None else 0,
+                "first_stock": int(m["first_stock"]) if m["first_stock"] is not None else 0,
+                "last_stock": int(m["last_stock"]) if m["last_stock"] is not None else 0,
+                "decrease_intervals": int(m["decrease_intervals"]) if m["decrease_intervals"] is not None else 0,
+                "increase_intervals": int(m["increase_intervals"]) if m["increase_intervals"] is not None else 0,
+                "flat_intervals": int(m["flat_intervals"]) if m["flat_intervals"] is not None else 0,
+                "decrease_pct": float(m["decrease_pct"]) if m["decrease_pct"] is not None else 0.0,
+                "daily_sell_rate": float(m["daily_sell_rate"]) if m["daily_sell_rate"] is not None else 0.0,
+                "sanity_flag": bool(m["sanity_flag"]) if m["sanity_flag"] is not None else False,
+            }
+    except Exception:
+        sales_stats = None
+
     return {
         "product": {
             "id": product.id,
@@ -148,6 +175,7 @@ async def get_pipeline_details(
             {"value": float(r.value), "timestamp": r.timestamp.isoformat()}
             for r in price_history
         ],
+        "sales_stats": sales_stats,
     }
 
 

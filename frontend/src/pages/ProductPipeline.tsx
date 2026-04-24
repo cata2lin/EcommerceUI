@@ -59,6 +59,39 @@ function shouldShowSection(sectionStatus: string, currentStatus: string): boolea
   return sectionIndex >= 0 && sectionIndex <= currentIndex;
 }
 
+function StatBlock({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+  return (
+    <div style={{
+      border: '1px solid var(--color-border-default)',
+      borderRadius: 'var(--radius-md)',
+      padding: 'var(--spacing-3)',
+      background: 'var(--color-bg-default)',
+    }}>
+      <div style={{
+        fontSize: '0.65rem',
+        color: 'var(--color-text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        fontWeight: 600,
+        marginBottom: 4,
+      }}>{label}</div>
+      <div style={{
+        fontSize: '1.25rem',
+        fontWeight: 700,
+        color: color || 'var(--color-text-primary)',
+        lineHeight: 1.2,
+      }}>{value}</div>
+      {sub && (
+        <div style={{
+          fontSize: '0.7rem',
+          color: 'var(--color-text-muted)',
+          marginTop: 2,
+        }}>{sub}</div>
+      )}
+    </div>
+  );
+}
+
 export default function ProductPipeline() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -382,7 +415,7 @@ export default function ProductPipeline() {
   }
   if (!data) return <div style={{ padding: 'var(--spacing-8)', color: 'var(--color-text-error)' }}>Product not found</div>;
 
-  const { product, metrics, stock_history = [], price_history = [], all_groups = [], all_categories: all_product_categories = [] } = data;
+  const { product, metrics, stock_history = [], price_history = [], all_groups = [], all_categories: all_product_categories = [], sales_stats = null } = data;
   const currentStatus = form.status || 'New';
 
   // Chart filtering
@@ -664,6 +697,80 @@ export default function ProductPipeline() {
           </div>
         </div>
       </div>
+
+      {/* ─── Sales & Velocity Stats (from intel.product_sales_stats) ── */}
+      {sales_stats && (
+        <div className="card" style={{ marginBottom: 'var(--spacing-4)', padding: 'var(--spacing-4)' }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 'var(--spacing-3)' }}>
+            <div className="flex items-center gap-2">
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Sales & Velocity</h3>
+              <span style={{
+                fontSize: '0.65rem',
+                color: 'var(--color-text-muted)',
+                background: 'var(--color-bg-subtle)',
+                padding: '2px 6px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border-default)',
+              }}>
+                All-time · stock-derived
+              </span>
+              {sales_stats.sanity_flag && (
+                <span style={{
+                  fontSize: '0.65rem',
+                  color: 'var(--color-warning, #b45309)',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  padding: '2px 6px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--color-warning, #b45309)',
+                  fontWeight: 600,
+                }} title="Stats may be unreliable">⚠ Sanity flagged</span>
+              )}
+            </div>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+              {sales_stats.first_seen} → {sales_stats.last_seen} · {sales_stats.span_days}d span
+            </span>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)',
+            gap: 'var(--spacing-3)',
+          }}>
+            <StatBlock
+              label="Total Sold"
+              value={sales_stats.total_sold.toLocaleString()}
+              sub={`${sales_stats.total_restocked.toLocaleString()} restocked`}
+              color="var(--color-success, #059669)"
+            />
+            <StatBlock
+              label="Daily Rate"
+              value={`${sales_stats.daily_sell_rate.toFixed(2)}/d`}
+              sub={`over ${sales_stats.span_days}d`}
+            />
+            <StatBlock
+              label="Decrease %"
+              value={`${sales_stats.decrease_pct.toFixed(1)}%`}
+              sub={`${sales_stats.decrease_intervals}/${sales_stats.decrease_intervals + sales_stats.increase_intervals + sales_stats.flat_intervals} intervals`}
+              color={sales_stats.decrease_pct >= 50 ? 'var(--color-success, #059669)' : undefined}
+            />
+            <StatBlock
+              label="Intervals"
+              value={`↓${sales_stats.decrease_intervals} ↑${sales_stats.increase_intervals} =${sales_stats.flat_intervals}`}
+              sub="down / up / flat"
+            />
+            <StatBlock
+              label="Stock"
+              value={sales_stats.last_stock.toLocaleString()}
+              sub={`first: ${sales_stats.first_stock.toLocaleString()}`}
+            />
+            <StatBlock
+              label="Data Points"
+              value={sales_stats.data_points.toLocaleString()}
+              sub={`${sales_stats.span_days}d window`}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ─── Key Financials & Seasonality ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)', marginBottom: 'var(--spacing-4)' }}>
