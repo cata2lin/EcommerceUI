@@ -21,6 +21,7 @@ from api.routes import parser_status, config
 from api.routes import deployments
 from api.routes import system_monitoring
 from api.routes import purchase_orders
+from api.routes import tom_config
 
 import asyncio
 
@@ -76,6 +77,7 @@ app.include_router(parser_status.router, tags=["Parser Status"])
 app.include_router(config.router, tags=["Configuration"])
 app.include_router(system_monitoring.router, tags=["System Monitoring"])
 app.include_router(purchase_orders.router, tags=["Purchase Orders"])
+app.include_router(tom_config.router, tags=["TOM API Config"])
 app.include_router(deployments.router, tags=["Deployments"])
 
 

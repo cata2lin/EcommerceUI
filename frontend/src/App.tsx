@@ -26,6 +26,7 @@ import Deployments from './pages/Deployments';
 import ApprovedItems from './pages/ApprovedItems';
 import PurchaseOrdersList from './pages/PurchaseOrdersList';
 import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
+import TomApiConfig from './pages/TomApiConfig';
 
 // Import enhanced styles
 import './components/EnhancedUI.css';
@@ -67,6 +68,7 @@ function AppRoutes() {
           <Route path="/system" element={<SystemMonitoring />} />
           <Route path="/deployments" element={<Deployments />} />
           <Route path="/purchase-orders/approved-items" element={<ApprovedItems />} />
+          <Route path="/purchase-orders/tom-config" element={<TomApiConfig />} />
           <Route path="/purchase-orders" element={<PurchaseOrdersList />} />
           <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />

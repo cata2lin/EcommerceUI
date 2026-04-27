@@ -292,6 +292,11 @@ export default function Sidebar() {
             {Icons.package}
             <span>Purchase Orders</span>
           </NavLink>
+
+          <NavLink to="/purchase-orders/tom-config" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            {Icons.settings}
+            <span>TOM API Config</span>
+          </NavLink>
         </div>
 
         {/* ─── System Section ─── */}

@@ -21,7 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from api.core.tom_client import TOM_SOURCE_CODE, is_tom_configured, tom_fetch
+from api.core.tom_client import get_source_code, is_tom_configured, tom_fetch
 from api.routes.auth import get_current_user
 from db.models import (
     PoSyncLog,
@@ -797,7 +797,7 @@ async def refresh_from_tom(
     if not po.tom_po_id:
         raise HTTPException(400, "PO has not been sent to TOM yet")
 
-    path = f"/api/v1/po/{TOM_SOURCE_CODE}/{po.id}"
+    path = f"/api/v1/po/{get_source_code()}/{po.id}"
     idempotency_key = str(uuid.uuid4())
     http_status = 0
     resp_body: Any = None

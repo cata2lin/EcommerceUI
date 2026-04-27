@@ -195,4 +195,25 @@ export const sendPurchaseOrderToTom = (id: number) =>
 export const refreshPurchaseOrderFromTom = (id: number) =>
   api.post(`/api/purchase-orders/${id}/refresh-from-tom`);
 
+// ─── TOM API Config ───────────────────────────────────────
+export const fetchTomConfig = () => api.get('/api/tom-config');
+
+export const updateTomConfig = (data: {
+  base_url?: string;
+  api_key_id?: string;
+  api_secret?: string | null;
+  source_code?: string;
+}) => api.put('/api/tom-config', data);
+
+export const clearTomSecret = () => api.delete('/api/tom-config/secret');
+
+export const clearTomConfig = () => api.delete('/api/tom-config');
+
+export const testTomConnection = (overrides?: {
+  base_url?: string;
+  api_key_id?: string;
+  api_secret?: string;
+  source_code?: string;
+}) => api.post('/api/tom-config/test', overrides || {});
+
 export default api;

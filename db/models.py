@@ -289,3 +289,16 @@ class ProductPurchaseOrderLink(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True)
     purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id", ondelete="CASCADE"), nullable=False, index=True)
     linked_at = Column(DateTime, nullable=False, server_default=func.now())
+
+
+# ─── TomApiConfig (single-row settings store for TOM API integration) ─────
+class TomApiConfig(Base):
+    __tablename__ = "tom_api_config"
+
+    id = Column(Integer, primary_key=True, default=1)
+    base_url = Column(Text)
+    api_key_id = Column(Text)
+    api_secret = Column(Text)
+    source_code = Column(Text)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
