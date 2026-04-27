@@ -95,6 +95,8 @@ export default function PurchaseOrderDetail() {
   const [priority, setPriority] = useState('STANDARD');
   const [items, setItems] = useState<POItem[]>([]);
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<POItem | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,14 +157,23 @@ export default function PurchaseOrderDetail() {
     }
   };
 
-  const handleRemoveItem = async (itemId: number) => {
-    if (!po) return;
-    if (!confirm('Remove this product from the PO? The product will be unlinked.')) return;
+  const requestRemoveItem = (item: POItem) => {
+    setConfirmDeleteItem(item);
+  };
+
+  const handleConfirmRemoveItem = async () => {
+    if (!po || !confirmDeleteItem) return;
+    const item = confirmDeleteItem;
+    setDeletingItemId(item.id);
     try {
-      await deletePurchaseOrderItem(po.id, itemId);
-      await load();
+      await deletePurchaseOrderItem(po.id, item.id);
+      // Optimistic local removal — no full reload, preserves scroll position.
+      setItems(prev => prev.filter(x => x.id !== item.id));
+      setConfirmDeleteItem(null);
     } catch (e: any) {
       alert(e?.response?.data?.detail || 'Failed to remove');
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -343,7 +354,7 @@ export default function PurchaseOrderDetail() {
                 )}
                 {isDraft && (
                   <td style={tdStyle}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => handleRemoveItem(it.id)} title="Remove">✕</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => requestRemoveItem(it)} title="Remove">✕</button>
                   </td>
                 )}
               </tr>
@@ -408,6 +419,69 @@ export default function PurchaseOrderDetail() {
           </div>
         )}
       </div>
+
+      {confirmDeleteItem && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => deletingItemId === null && setConfirmDeleteItem(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 'var(--spacing-4)',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--color-bg-default, #fff)',
+              borderRadius: 8,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+              maxWidth: 460, width: '100%',
+              padding: 'var(--spacing-5)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 var(--spacing-2)', fontSize: '1rem' }}>Remove product from PO?</h3>
+            <p style={{ margin: '0 0 var(--spacing-3)', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+              The product will be unlinked from this PO.
+            </p>
+            <div style={{
+              background: 'var(--color-bg-subtle)',
+              border: '1px solid var(--color-border-default)',
+              borderRadius: 6,
+              padding: 'var(--spacing-3)',
+              fontSize: '0.8rem',
+              marginBottom: 'var(--spacing-4)',
+              display: 'flex', gap: 10, alignItems: 'center',
+            }}>
+              {confirmDeleteItem.image_url && (
+                <img src={confirmDeleteItem.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {confirmDeleteItem.product_title}
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                  #{confirmDeleteItem.product_id} · qty {confirmDeleteItem.quantity}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setConfirmDeleteItem(null)}
+                disabled={deletingItemId !== null}
+              >Cancel</button>
+              <button
+                className="btn btn-sm"
+                onClick={handleConfirmRemoveItem}
+                disabled={deletingItemId !== null}
+                style={{ background: '#B91C1C', color: '#fff' }}
+              >{deletingItemId !== null ? 'Removing…' : 'Remove'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
