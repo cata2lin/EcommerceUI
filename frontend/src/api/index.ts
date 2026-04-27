@@ -98,6 +98,8 @@ export const refreshStoreAnalytics = () => api.post('/api/store-analytics/refres
 export const fetchParserStatus = () => api.get('/api/parser-status');
 export const fetchParserRuns = (parserId?: number) =>
   api.get('/api/parser-runs', { params: parserId ? { parser_id: parserId } : {} });
+export const fetchParserActivity = (parserId: number) =>
+  api.get(`/api/parser-activity/${parserId}`);
 
 // ─── Config ───────────────────────────────────────────────
 export const fetchConfig = () => api.get('/api/config/data');

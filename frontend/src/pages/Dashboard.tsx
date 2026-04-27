@@ -9,6 +9,7 @@ import {
   moveToNewStatus, refreshDashboard
 } from '../api';
 import { useSidebar } from '../contexts/SidebarContext';
+import ParserActivityModal from '../components/ParserActivityModal';
 import './Dashboard.css';
 
 const PIPELINE_OPTIONS = [
@@ -139,6 +140,7 @@ export default function Dashboard() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   // ─── Read applied filter/sort/page state from URL ───
   const parserId = searchParams.get('parser_id') || '';
@@ -420,10 +422,28 @@ export default function Dashboard() {
           <h1>{isWatchlist ? 'Watchlist' : 'All Products'}</h1>
           <span className="text-sm text-muted">{total.toLocaleString()} products</span>
         </div>
-        <button className={`btn btn-ghost btn-sm ${refreshing ? 'animate-pulse' : ''}`} onClick={handleRefresh} disabled={refreshing}>
-          ↻ Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {parserId && !isWatchlist && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setActivityOpen(true)}
+              title="View parser activity log"
+            >
+              📊 Activity Log
+            </button>
+          )}
+          <button className={`btn btn-ghost btn-sm ${refreshing ? 'animate-pulse' : ''}`} onClick={handleRefresh} disabled={refreshing}>
+            ↻ Refresh
+          </button>
+        </div>
       </div>
+
+      {activityOpen && parserId && !isWatchlist && (
+        <ParserActivityModal
+          parserId={Number(parserId)}
+          onClose={() => setActivityOpen(false)}
+        />
+      )}
 
       {/* Filter Bar */}
       <div className="card dash-filter-bar">
