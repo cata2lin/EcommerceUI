@@ -227,6 +227,11 @@ def get_purchase_order(
     )
     if not po:
         raise HTTPException(404, "PO not found")
+    # Opportunistically heal lines that were created before the product had a SKU,
+    # barcode, or image — so the UI reflects them as soon as they're generated.
+    if _backfill_missing_line_fields(db, list(po.items)):
+        db.commit()
+        db.refresh(po)
     return _serialize_po(po, items=po.items)
 
 
@@ -323,10 +328,44 @@ def _unlink_product(db: Session, product_id: int, po_id: int):
     )
 
 
+def _backfill_missing_line_fields(db: Session, items: list) -> int:
+    """For PO lines missing sku/barcode/image_url, copy them from the live product /
+    pipeline_detail row. Returns the number of lines that received at least one new
+    field. Caller is responsible for committing the session.
+    """
+    pids = [it.product_id for it in items if (not (it.sku or "").strip()
+                                              or not (it.barcode or "").strip()
+                                              or not (it.image_url or "").strip())]
+    if not pids:
+        return 0
+    pd_rows = db.query(ProductPipelineDetail).filter(
+        ProductPipelineDetail.product_id.in_(pids)
+    ).all()
+    pd_map = {r.product_id: r for r in pd_rows}
+    prod_rows = db.query(Product).filter(Product.id.in_(pids)).all()
+    prod_map = {r.id: r for r in prod_rows}
+    healed = 0
+    for it in items:
+        changed = False
+        pd = pd_map.get(it.product_id)
+        p = prod_map.get(it.product_id)
+        if not (it.sku or "").strip() and pd and (pd.sku or "").strip():
+            it.sku = pd.sku
+            changed = True
+        if not (it.barcode or "").strip() and pd and (pd.barcode or "").strip():
+            it.barcode = pd.barcode
+            changed = True
+        if not (it.image_url or "").strip() and p and (p.image or "").strip():
+            it.image_url = p.image
+            changed = True
+        if changed:
+            healed += 1
+    return healed
+
+
 def _build_item_from_product(
     p: Product, pd: Optional[ProductPipelineDetail], overrides: dict
-) -> PurchaseOrderItem:
-    title = (pd.title if pd else None) or p.name or f"Product #{p.id}"
+) -> PurchaseOrderItem:    title = (pd.title if pd else None) or p.name or f"Product #{p.id}"
     default_qty = (pd.suggested_quantity_min if pd else None) or 1
     default_cost = pd.cogs_usd if pd else None
     qty = int(overrides.get("quantity") or default_qty or 1)
@@ -692,6 +731,10 @@ async def send_to_tom(
     if not po.items:
         raise HTTPException(400, "PO has no items")
 
+    # Heal lines that pre-date later SKU/barcode/image generation on the product.
+    if _backfill_missing_line_fields(db, list(po.items)):
+        db.commit()
+
     # Preconditions: all items must have image_url
     missing = [it.product_title for it in po.items if not (it.image_url or "").strip()]
     if missing:
@@ -938,6 +981,10 @@ async def amend_in_tom(
         raise HTTPException(400, "PO must have been sent to TOM before it can be amended")
     if not po.items:
         raise HTTPException(400, "PO has no items")
+
+    # Heal lines that pre-date later SKU/barcode/image generation on the product.
+    if _backfill_missing_line_fields(db, list(po.items)):
+        db.commit()
 
     # Preconditions: every line must have an SKU and image_url (same as send).
     missing_img = [it.product_title for it in po.items if not (it.image_url or "").strip()]
