@@ -679,6 +679,16 @@ async def send_to_tom(
             f"Cannot send to TOM — {len(missing)} line(s) missing image URLs: {sample}{suffix}",
         )
 
+    # Preconditions: all items must have a SKU
+    missing_sku = [it.product_title for it in po.items if not (it.sku or "").strip()]
+    if missing_sku:
+        sample = "; ".join(missing_sku[:5])
+        suffix = f"; and {len(missing_sku)-5} more" if len(missing_sku) > 5 else ""
+        raise HTTPException(
+            422,
+            f"Cannot send to TOM — {len(missing_sku)} line(s) missing SKU: {sample}{suffix}",
+        )
+
     # Idempotency key (reuse on retry)
     if not po.tom_send_idempotency_key:
         po.tom_send_idempotency_key = str(uuid.uuid4())

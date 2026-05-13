@@ -199,6 +199,16 @@ export default function PurchaseOrderDetail() {
   };
   const handleSendTom = async () => {
     if (!po) return;
+    // Client-side guard: every line must have an SKU before sending.
+    const missingSku = items.filter(it => !(it.sku || '').trim());
+    if (missingSku.length > 0) {
+      const sample = missingSku.slice(0, 5).map(it => it.product_title || `#${it.id}`).join('\n• ');
+      const suffix = missingSku.length > 5 ? `\n… and ${missingSku.length - 5} more` : '';
+      alert(
+        `Cannot send to TOM — ${missingSku.length} line(s) are missing an SKU:\n\n• ${sample}${suffix}\n\nAdd SKUs to every product before sending.`
+      );
+      return;
+    }
     if (!confirm(`Send ${po.display_number} to TOM?`)) return;
     try {
       const res = await sendPurchaseOrderToTom(po.id);
