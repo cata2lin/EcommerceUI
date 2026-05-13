@@ -21,6 +21,7 @@ interface DraftPo {
   display_number: string;
   title: string | null;
   priority: string;
+  status: string;
   items_count: number;
   total_cost_usd: number | null;
 }
@@ -43,7 +44,7 @@ export default function AddToPoModal({ product, onClose, onSuccess }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchPurchaseOrders({ status: 'DRAFT', limit: 50 })
+    fetchPurchaseOrders({ status: 'DRAFT,SENT_TO_TOM', limit: 50 })
       .then(res => {
         const list = res.data.purchase_orders || [];
         setDrafts(list);
@@ -116,7 +117,7 @@ export default function AddToPoModal({ product, onClose, onSuccess }: Props) {
               className={`btn btn-sm ${mode === 'existing' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setMode('existing')}
               disabled={drafts.length === 0}
-            >Existing DRAFT PO {drafts.length > 0 && `(${drafts.length})`}</button>
+            >Existing PO {drafts.length > 0 && `(${drafts.length})`}</button>
             <button
               className={`btn btn-sm ${mode === 'new' ? 'btn-primary' : 'btn-ghost'}`}
               onClick={() => setMode('new')}
@@ -125,16 +126,16 @@ export default function AddToPoModal({ product, onClose, onSuccess }: Props) {
 
           {mode === 'existing' && (
             <div style={{ marginBottom: 'var(--spacing-4)' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Select a DRAFT Purchase Order</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Select a Purchase Order (DRAFT or already sent to TOM)</label>
               {loading ? (
                 <div style={{ padding: 12, color: 'var(--color-text-muted)' }}>Loading…</div>
               ) : drafts.length === 0 ? (
-                <div style={{ padding: 12, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>No DRAFT POs. Create a new one →</div>
+                <div style={{ padding: 12, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>No editable POs. Create a new one →</div>
               ) : (
                 <select className="select" value={selectedPoId ?? ''} onChange={e => setSelectedPoId(Number(e.target.value))} style={{ width: '100%', marginTop: 4 }}>
                   {drafts.map(d => (
                     <option key={d.id} value={d.id}>
-                      {d.display_number} · {d.title || 'Untitled'} · {d.items_count} items · ${(d.total_cost_usd || 0).toFixed(2)}
+                      {d.display_number} · {d.status === 'SENT_TO_TOM' ? '[TOM] ' : ''}{d.title || 'Untitled'} · {d.items_count} items · ${(d.total_cost_usd || 0).toFixed(2)}
                     </option>
                   ))}
                 </select>

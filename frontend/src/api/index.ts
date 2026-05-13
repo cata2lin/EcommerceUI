@@ -197,6 +197,9 @@ export const sendPurchaseOrderToTom = (id: number) =>
 export const refreshPurchaseOrderFromTom = (id: number) =>
   api.post(`/api/purchase-orders/${id}/refresh-from-tom`);
 
+export const amendPurchaseOrderInTom = (id: number) =>
+  api.post(`/api/purchase-orders/${id}/amend-tom`);
+
 // ─── TOM API Config ───────────────────────────────────────
 export const fetchTomConfig = () => api.get('/api/tom-config');
 

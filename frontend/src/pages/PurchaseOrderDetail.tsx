@@ -8,6 +8,7 @@ import {
   updatePurchaseOrder, deletePurchaseOrderItem,
   approvePurchaseOrder, cancelPurchaseOrder,
   sendPurchaseOrderToTom, refreshPurchaseOrderFromTom,
+  amendPurchaseOrderInTom,
   deletePurchaseOrder,
 } from '../api';
 
@@ -97,6 +98,13 @@ export default function PurchaseOrderDetail() {
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
   const [confirmDeleteItem, setConfirmDeleteItem] = useState<POItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  // Edit mode for already-sent POs (when true, allow editing unlocked lines).
+  const [editing, setEditing] = useState(false);
+  // Result modal after amending in TOM.
+  const [amendResult, setAmendResult] = useState<{
+    applied: Array<{ source_line_id: string; op: string }>;
+    skipped: Array<{ source_line_id: string; reason: string; current_status?: string }>;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +129,12 @@ export default function PurchaseOrderDetail() {
   const isSent = po?.status === 'SENT_TO_TOM';
   const isCancelled = po?.status === 'CANCELLED';
 
+  // When true, lines/fields are editable: DRAFT always, SENT_TO_TOM while user clicked "Edit".
+  const canEdit = isDraft || (isSent && editing);
+  // TOM line statuses that mark a line as immutable (already past NEW).
+  const LOCKED_TOM_STATUSES = new Set(['ORDERED', 'PARTIALLY_SHIPPED', 'SHIPPED', 'RECEIVED', 'PARTIALLY_RECEIVED', 'CANCELLED']);
+  const isLineLocked = (it: POItem) => isSent && LOCKED_TOM_STATUSES.has((it.tom_status || '').toUpperCase());
+
   const updateItemLocal = (idx: number, patch: Partial<POItem>) => {
     setItems(prev => {
       const next = [...prev];
@@ -136,7 +150,8 @@ export default function PurchaseOrderDetail() {
     setSaving(true);
     try {
       const payload: any = { title: title || null, notes: notes || null, priority };
-      if (isDraft) {
+      if (canEdit) {
+        // Send every line; backend filters out locked ones (TOM-processed) defensively.
         payload.items = items.map(it => ({
           id: it.id,
           product_id: it.product_id,
@@ -157,7 +172,60 @@ export default function PurchaseOrderDetail() {
     }
   };
 
+  // Save local edits, then push them to TOM via the amend endpoint.
+  const handleSendUpdates = async () => {
+    if (!po) return;
+    // Pre-flight: every line must have an SKU before TOM accepts it.
+    const missingSku = items.filter(it => !(it.sku || '').trim());
+    if (missingSku.length > 0) {
+      const sample = missingSku.slice(0, 5).map(it => it.product_title || `#${it.id}`).join('\n• ');
+      const suffix = missingSku.length > 5 ? `\n… and ${missingSku.length - 5} more` : '';
+      alert(`Cannot send updates — ${missingSku.length} line(s) are missing an SKU:\n\n• ${sample}${suffix}`);
+      return;
+    }
+    if (!confirm(`Send the current edits for ${po.display_number} to TOM?`)) return;
+    setSaving(true);
+    try {
+      // 1) Persist edits locally first.
+      const payload: any = {
+        title: title || null,
+        notes: notes || null,
+        priority,
+        items: items.map(it => ({
+          id: it.id,
+          product_id: it.product_id,
+          product_title: it.product_title,
+          quantity: it.quantity,
+          unit_cost_usd: it.unit_cost_usd,
+          priority: it.priority,
+          notes: it.notes,
+        })),
+      };
+      const saved = await updatePurchaseOrder(po.id, payload);
+      setPo(saved.data);
+      setItems(saved.data.items);
+
+      // 2) Push to TOM as amendment.
+      const res = await amendPurchaseOrderInTom(po.id);
+      if (!res.data.ok) {
+        alert(`TOM rejected the amendment: ${res.data.error_message || 'unknown error'}`);
+      } else {
+        setAmendResult({ applied: res.data.applied || [], skipped: res.data.skipped || [] });
+        setEditing(false);
+      }
+      await load();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Send updates failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const requestRemoveItem = (item: POItem) => {
+    if (isLineLocked(item)) {
+      alert(`This line cannot be removed — already ${item.tom_status} in TOM.`);
+      return;
+    }
     setConfirmDeleteItem(item);
   };
 
@@ -255,9 +323,17 @@ export default function PurchaseOrderDetail() {
           {isDraft && <button className="btn btn-ghost btn-sm" onClick={handleDelete} style={{ color: '#B91C1C' }}>🗑 Delete</button>}
           {isDraft && <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : '💾 Save'}</button>}
           {isDraft && items.length > 0 && <button className="btn btn-success btn-sm" onClick={handleApprove}>✓ Approve</button>}
-          {(isApproved || isSent) && <button className="btn btn-primary btn-sm" onClick={handleSendTom}>🚀 {isSent ? 'Resend to TOM' : 'Send to TOM'}</button>}
-          {isSent && <button className="btn btn-ghost btn-sm" onClick={handleRefreshTom}>🔄 Refresh from TOM</button>}
-          {!isCancelled && !isDraft && <button className="btn btn-ghost btn-sm" onClick={handleCancel} style={{ color: '#B91C1C' }}>✕ Cancel PO</button>}
+          {isSent && !editing && <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>✏️ Edit</button>}
+          {isSent && editing && (
+            <>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(false); load(); }} disabled={saving}>Cancel edits</button>
+              <button className="btn btn-primary btn-sm" onClick={handleSendUpdates} disabled={saving}>{saving ? 'Sending…' : '💾 Send Updates to TOM'}</button>
+            </>
+          )}
+          {isApproved && <button className="btn btn-primary btn-sm" onClick={handleSendTom}>🚀 Send to TOM</button>}
+          {isSent && !editing && <button className="btn btn-primary btn-sm" onClick={handleSendTom}>🚀 Resend to TOM</button>}
+          {isSent && !editing && <button className="btn btn-ghost btn-sm" onClick={handleRefreshTom}>🔄 Refresh from TOM</button>}
+          {!isCancelled && !isDraft && !editing && <button className="btn btn-ghost btn-sm" onClick={handleCancel} style={{ color: '#B91C1C' }}>✕ Cancel PO</button>}
           {isDraft && <button className="btn btn-ghost btn-sm" onClick={handleCancel} style={{ color: '#B91C1C' }}>✕ Cancel</button>}
         </div>
       </div>
@@ -267,12 +343,12 @@ export default function PurchaseOrderDetail() {
         <div className="flex items-start gap-4" style={{ flexWrap: 'wrap' }}>
           <div style={{ flex: 2, minWidth: 240 }}>
             <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Title</label>
-            <input className="input" value={title} onChange={e => setTitle(e.target.value)} disabled={!isDraft}
+            <input className="input" value={title} onChange={e => setTitle(e.target.value)} disabled={!canEdit}
               style={{ width: '100%', marginTop: 4 }} placeholder="Optional title…" />
           </div>
           <div style={{ flex: 1, minWidth: 140 }}>
             <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Priority</label>
-            <select className="select" value={priority} onChange={e => setPriority(e.target.value)} disabled={!isDraft}
+            <select className="select" value={priority} onChange={e => setPriority(e.target.value)} disabled={!canEdit}
               style={{ width: '100%', marginTop: 4 }}>
               <option value="STANDARD">Standard</option>
               <option value="HIGH">⚡ High</option>
@@ -280,7 +356,7 @@ export default function PurchaseOrderDetail() {
           </div>
           <div style={{ flex: 3, minWidth: 240 }}>
             <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Notes</label>
-            <textarea className="input" value={notes} onChange={e => setNotes(e.target.value)} disabled={!isDraft}
+            <textarea className="input" value={notes} onChange={e => setNotes(e.target.value)} disabled={!canEdit}
               rows={2} style={{ width: '100%', marginTop: 4, resize: 'vertical' }} />
           </div>
         </div>
@@ -297,7 +373,7 @@ export default function PurchaseOrderDetail() {
       <div className="card" style={{ padding: 0, marginBottom: 'var(--spacing-4)', overflow: 'hidden' }}>
         <div style={{ padding: 'var(--spacing-3) var(--spacing-4)', borderBottom: '1px solid var(--color-border-default)', display: 'flex', justifyContent: 'space-between' }}>
           <strong>Items ({items.length})</strong>
-          <strong style={{ fontFamily: 'var(--font-mono)' }}>Total: {fmtUsd(isDraft ? totalCost : po.total_cost_usd)}</strong>
+          <strong style={{ fontFamily: 'var(--font-mono)' }}>Total: {fmtUsd(canEdit ? totalCost : po.total_cost_usd)}</strong>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -310,16 +386,19 @@ export default function PurchaseOrderDetail() {
               <th style={{ ...thStyle, width: 120, textAlign: 'right' }}>Line $</th>
               <th style={{ ...thStyle, width: 120 }}>Priority</th>
               {isSent && <th style={thStyle}>TOM</th>}
-              {isDraft && <th style={{ ...thStyle, width: 40 }}></th>}
+              {canEdit && <th style={{ ...thStyle, width: 40 }}></th>}
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
-              <tr><td colSpan={isDraft ? 8 : 7} style={{ ...tdStyle, textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--spacing-8)' }}>
+              <tr><td colSpan={canEdit ? 8 : 7} style={{ ...tdStyle, textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--spacing-8)' }}>
                 No items yet. Add products from Approved Items or the product detail page.
               </td></tr>
-            ) : items.map((it, idx) => (
-              <tr key={it.id}>
+            ) : items.map((it, idx) => {
+              const lineEditable = canEdit && !isLineLocked(it);
+              const lockTitle = isLineLocked(it) ? `Locked — already ${it.tom_status} in TOM` : undefined;
+              return (
+              <tr key={it.id} title={lockTitle} style={isLineLocked(it) ? { background: 'var(--color-bg-subtle)' } : undefined}>
                 <td style={tdStyle}>
                   <div style={{ width: 40, height: 40, background: 'var(--color-bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
                     {it.image_url ? <img src={it.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
@@ -330,14 +409,14 @@ export default function PurchaseOrderDetail() {
                 </td>
                 <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>{it.sku || '—'}</td>
                 <td style={{ ...tdStyle, textAlign: 'right' }}>
-                  {isDraft ? (
+                  {lineEditable ? (
                     <input type="number" className="input" value={it.quantity} min={1}
                       onChange={e => updateItemLocal(idx, { quantity: parseInt(e.target.value || '1', 10) })}
                       style={{ width: 80, textAlign: 'right', fontFamily: 'var(--font-mono)' }} />
                   ) : <span style={{ fontFamily: 'var(--font-mono)' }}>{it.quantity}</span>}
                 </td>
                 <td style={{ ...tdStyle, textAlign: 'right' }}>
-                  {isDraft ? (
+                  {lineEditable ? (
                     <input type="number" step="0.01" className="input" value={it.unit_cost_usd ?? ''}
                       onChange={e => updateItemLocal(idx, { unit_cost_usd: e.target.value ? parseFloat(e.target.value) : null })}
                       style={{ width: 100, textAlign: 'right', fontFamily: 'var(--font-mono)' }} />
@@ -347,7 +426,7 @@ export default function PurchaseOrderDetail() {
                   {fmtUsd((it.quantity || 0) * (it.unit_cost_usd || 0))}
                 </td>
                 <td style={tdStyle}>
-                  {isDraft ? (
+                  {lineEditable ? (
                     <select className="select" value={it.priority}
                       onChange={e => updateItemLocal(idx, { priority: e.target.value })}
                       style={{ width: 110 }}>
@@ -362,13 +441,18 @@ export default function PurchaseOrderDetail() {
                     {it.tom_received_qty != null && <div style={{ color: 'var(--color-text-muted)' }}>Recv: {it.tom_received_qty}/{it.quantity}</div>}
                   </td>
                 )}
-                {isDraft && (
+                {canEdit && (
                   <td style={tdStyle}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => requestRemoveItem(it)} title="Remove">✕</button>
+                    {lineEditable ? (
+                      <button className="btn btn-ghost btn-sm" onClick={() => requestRemoveItem(it)} title="Remove">✕</button>
+                    ) : (
+                      <span title={lockTitle} style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>🔒</span>
+                    )}
                   </td>
                 )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -488,6 +572,79 @@ export default function PurchaseOrderDetail() {
                 disabled={deletingItemId !== null}
                 style={{ background: '#B91C1C', color: '#fff' }}
               >{deletingItemId !== null ? 'Removing…' : 'Remove'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {amendResult && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setAmendResult(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 'var(--spacing-4)',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--color-bg-default, #fff)',
+              borderRadius: 8,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+              maxWidth: 640, width: '100%',
+              padding: 'var(--spacing-5)',
+              maxHeight: '80vh', overflow: 'auto',
+            }}
+          >
+            <h3 style={{ margin: '0 0 var(--spacing-3)', fontSize: '1rem' }}>TOM amendment result</h3>
+            <div style={{ marginBottom: 'var(--spacing-3)', fontSize: '0.85rem' }}>
+              <strong style={{ color: '#065F46' }}>✓ Applied: {amendResult.applied.length}</strong>
+              {amendResult.skipped.length > 0 && (
+                <strong style={{ marginLeft: 16, color: '#92400E' }}>⚠ Skipped: {amendResult.skipped.length}</strong>
+              )}
+            </div>
+            {amendResult.applied.length > 0 && (
+              <div style={{ marginBottom: 'var(--spacing-3)' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>Applied operations</div>
+                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                  <thead><tr style={{ background: 'var(--color-bg-subtle)' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 8px' }}>Line</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px' }}>Op</th>
+                  </tr></thead>
+                  <tbody>
+                    {amendResult.applied.map((a, i) => (
+                      <tr key={i}><td style={{ padding: '4px 8px', fontFamily: 'var(--font-mono)' }}>{a.source_line_id}</td><td style={{ padding: '4px 8px' }}>{a.op}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {amendResult.skipped.length > 0 && (
+              <div style={{ marginBottom: 'var(--spacing-3)' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>Skipped (not applied)</div>
+                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                  <thead><tr style={{ background: 'var(--color-bg-subtle)' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 8px' }}>Line</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px' }}>Reason</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px' }}>Current status</th>
+                  </tr></thead>
+                  <tbody>
+                    {amendResult.skipped.map((s, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: '4px 8px', fontFamily: 'var(--font-mono)' }}>{s.source_line_id}</td>
+                        <td style={{ padding: '4px 8px' }}>{s.reason}</td>
+                        <td style={{ padding: '4px 8px' }}>{s.current_status || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-primary btn-sm" onClick={() => setAmendResult(null)}>Close</button>
             </div>
           </div>
         </div>

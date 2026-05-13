@@ -132,7 +132,11 @@ def list_purchase_orders(
 ):
     q = db.query(PurchaseOrder)
     if status:
-        q = q.filter(PurchaseOrder.status == status)
+        statuses = [s.strip() for s in status.split(",") if s.strip()]
+        if len(statuses) == 1:
+            q = q.filter(PurchaseOrder.status == statuses[0])
+        elif statuses:
+            q = q.filter(PurchaseOrder.status.in_(statuses))
     if search:
         s = f"%{search}%"
         # match PO number (int) or title or tom_number
@@ -419,16 +423,28 @@ def update_purchase_order(
 
     # Item updates: list of {id?, product_id, quantity, unit_cost_usd, priority, notes}
     if "items" in body:
-        if po.status != "DRAFT":
-            raise HTTPException(400, "Items can only be edited while PO is DRAFT")
+        if po.status not in {"DRAFT", "SENT_TO_TOM"}:
+            raise HTTPException(400, f"Items can only be edited while PO is DRAFT or SENT_TO_TOM (currently {po.status})")
         new_items = body["items"]
         existing = {it.id: it for it in po.items}
         keep_ids: set[int] = set()
+        # Lines past NEW state in TOM cannot be modified or removed.
+        locked_statuses = {"ORDERED", "PARTIALLY_SHIPPED", "SHIPPED", "RECEIVED", "PARTIALLY_RECEIVED", "CANCELLED"}
+
+        def _is_locked(line: PurchaseOrderItem) -> bool:
+            if po.status != "SENT_TO_TOM":
+                return False
+            st = (line.tom_status or "").upper()
+            return st in locked_statuses
 
         for raw in new_items:
             raw_id = raw.get("id")
             if raw_id and raw_id in existing:
                 line = existing[raw_id]
+                if _is_locked(line):
+                    # Locked line: keep as-is, ignore any field changes the client sent.
+                    keep_ids.add(raw_id)
+                    continue
                 if "quantity" in raw:
                     line.quantity = int(raw["quantity"])
                 if "unit_cost_usd" in raw and raw["unit_cost_usd"] is not None:
@@ -449,9 +465,12 @@ def update_purchase_order(
                 db.add(new_line)
                 _link_product(db, pid, po.id)
 
-        # Delete removed lines + release their product locks
+        # Delete removed lines + release their product locks (but refuse for locked lines)
         for lid, line in existing.items():
             if lid not in keep_ids:
+                if _is_locked(line):
+                    # Force-keep locked lines even if the client omitted them.
+                    continue
                 _unlink_product(db, line.product_id, po.id)
                 db.delete(line)
 
@@ -475,8 +494,8 @@ def add_item(
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == po_id).first()
     if not po:
         raise HTTPException(404, "PO not found")
-    if po.status != "DRAFT":
-        raise HTTPException(400, "Items can only be added while PO is DRAFT")
+    if po.status not in {"DRAFT", "SENT_TO_TOM"}:
+        raise HTTPException(400, f"Items can only be added while PO is DRAFT or SENT_TO_TOM (currently {po.status})")
     pid = int(body["product_id"])
     _check_product_free(db, pid, allow_po_id=po.id)
     p, pd = _load_product_for_line(db, pid)
@@ -503,8 +522,8 @@ def delete_item(
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == po_id).first()
     if not po:
         raise HTTPException(404, "PO not found")
-    if po.status != "DRAFT":
-        raise HTTPException(400, "Items can only be removed while PO is DRAFT")
+    if po.status not in {"DRAFT", "SENT_TO_TOM"}:
+        raise HTTPException(400, f"Items can only be removed while PO is DRAFT or SENT_TO_TOM (currently {po.status})")
     line = (
         db.query(PurchaseOrderItem)
         .filter(
@@ -515,6 +534,10 @@ def delete_item(
     )
     if not line:
         raise HTTPException(404, "Item not found")
+    # Refuse removal of TOM-locked lines (already processed past NEW).
+    locked_statuses = {"ORDERED", "PARTIALLY_SHIPPED", "SHIPPED", "RECEIVED", "PARTIALLY_RECEIVED", "CANCELLED"}
+    if po.status == "SENT_TO_TOM" and (line.tom_status or "").upper() in locked_statuses:
+        raise HTTPException(400, f"Cannot remove line — already {line.tom_status} in TOM")
     _unlink_product(db, line.product_id, po.id)
     db.delete(line)
     db.flush()
@@ -886,5 +909,152 @@ async def refresh_from_tom(
         "ok": success,
         "status": http_status,
         "items_updated": items_updated,
+        "purchase_order": _serialize_po(po, items=po.items),
+    }
+
+
+# ─── Amend an already-sent PO in TOM ────────────────────────────────
+@router.post("/api/purchase-orders/{po_id}/amend-tom")
+async def amend_in_tom(
+    po_id: int, db: Session = Depends(get_db), _user=Depends(get_current_user)
+):
+    """
+    Send the current local PO state to TOM as an amendment.
+    Only lines still in NEW status in TOM can be modified/removed; TOM returns
+    skipped[] for the rest. Implements POST /api/v1/po/{SOURCE}/{po_id}/amend.
+    """
+    if not is_tom_configured():
+        raise HTTPException(400, "TOM is not configured on this server.")
+
+    po = (
+        db.query(PurchaseOrder)
+        .options(selectinload(PurchaseOrder.items))
+        .filter(PurchaseOrder.id == po_id)
+        .first()
+    )
+    if not po:
+        raise HTTPException(404, "PO not found")
+    if po.status != "SENT_TO_TOM" or not po.tom_po_id:
+        raise HTTPException(400, "PO must have been sent to TOM before it can be amended")
+    if not po.items:
+        raise HTTPException(400, "PO has no items")
+
+    # Preconditions: every line must have an SKU and image_url (same as send).
+    missing_img = [it.product_title for it in po.items if not (it.image_url or "").strip()]
+    if missing_img:
+        sample = "; ".join(missing_img[:5])
+        suffix = f"; and {len(missing_img)-5} more" if len(missing_img) > 5 else ""
+        raise HTTPException(422, f"Cannot amend in TOM — {len(missing_img)} line(s) missing image URLs: {sample}{suffix}")
+    missing_sku = [it.product_title for it in po.items if not (it.sku or "").strip()]
+    if missing_sku:
+        sample = "; ".join(missing_sku[:5])
+        suffix = f"; and {len(missing_sku)-5} more" if len(missing_sku) > 5 else ""
+        raise HTTPException(422, f"Cannot amend in TOM — {len(missing_sku)} line(s) missing SKU: {sample}{suffix}")
+
+    # Build amendment payload: every current local line as UPDATE (TOM treats unknown
+    # source_line_id as ADD, missing existing lines as REMOVE per the spec).
+    items_payload: list[dict] = []
+    # Map product_id -> url for ref1 enrichment
+    ids = [it.product_id for it in po.items]
+    url_map: dict[int, Optional[str]] = {}
+    if ids:
+        rows = db.execute(text("SELECT id, url FROM products WHERE id = ANY(:ids)"), {"ids": ids}).fetchall()
+        url_map = {r[0]: r[1] for r in rows}
+
+    locked_statuses = {"ORDERED", "PARTIALLY_SHIPPED", "SHIPPED", "RECEIVED", "PARTIALLY_RECEIVED", "CANCELLED"}
+    for it in po.items:
+        # Send every line so TOM can decide what to do; for locked lines TOM will
+        # skip with reason=line_not_in_NEW.
+        body: dict[str, Any] = {
+            "source_line_id": str(it.id),
+            "action": "UPDATE",
+            "title": it.product_title,
+            "image_url": it.image_url,
+            "requested_qty": it.quantity,
+            "priority": it.priority,
+            "ref1_url": url_map.get(it.product_id),
+            "ref2_url": f"{PUBLIC_APP_URL}/product/{it.product_id}/pipeline-details",
+        }
+        if it.sku:
+            body["sku"] = it.sku
+        if it.barcode:
+            body["barcode"] = it.barcode
+        if it.unit_cost_usd is not None:
+            body["requested_unit_cost_usd"] = float(it.unit_cost_usd)
+        if it.notes:
+            body["notes"] = it.notes
+        # Hint TOM that locked lines are already past NEW so it short-circuits.
+        if (it.tom_status or "").upper() in locked_statuses:
+            # Still send so TOM doesn't treat as REMOVE.
+            pass
+        items_payload.append(body)
+
+    payload = {"items": items_payload}
+
+    source_code = get_source_code()
+    path = f"/api/v1/po/{source_code}/{po.id}/amend"
+    idempotency_key = str(uuid.uuid4())
+    http_status = 0
+    resp_body: Any = None
+    network_error: Optional[str] = None
+    try:
+        resp = await tom_fetch("POST", path, payload, idempotency_key)
+        http_status = resp["status"]
+        resp_body = resp["body"]
+    except Exception as e:
+        network_error = str(e)
+
+    success = http_status == 200
+    applied: list[dict] = []
+    skipped: list[dict] = []
+    err_msg: Optional[str] = None
+
+    if success and isinstance(resp_body, dict):
+        applied = list(resp_body.get("applied") or [])
+        skipped = list(resp_body.get("skipped") or [])
+        # Best-effort: mirror added/removed locally on lines we know about.
+        by_id = {str(it.id): it for it in po.items}
+        for a in applied:
+            src = a.get("source_line_id")
+            op = (a.get("op") or "").lower()
+            ln = by_id.get(str(src)) if src else None
+            if ln and op == "removed":
+                # Line was cancelled in TOM — keep locally but mark as such.
+                ln.tom_status = "CANCELLED"
+        po.tom_refreshed_at = datetime.utcnow()
+    elif not success:
+        err = resp_body.get("error") if isinstance(resp_body, dict) else None
+        err_msg = network_error or (err.get("message") if isinstance(err, dict) else None) or f"HTTP {http_status}"
+
+    db.add(
+        PoSyncLog(
+            purchase_order_id=po.id,
+            direction="OUT",
+            action="TOM_PO_AMEND",
+            status="SUCCESS" if success else "FAILED",
+            http_status=http_status or None,
+            idempotency_key=idempotency_key,
+            items_affected=len(applied),
+            error_message=err_msg,
+            request_body=payload,
+            response_body=resp_body if isinstance(resp_body, (dict, list)) else None,
+            details={"endpoint": path, "method": "POST", "network_error": network_error},
+        )
+    )
+    db.commit()
+    db.refresh(po)
+    po.items
+    if not success:
+        return {
+            "ok": False,
+            "status": http_status,
+            "error_message": err_msg,
+            "purchase_order": _serialize_po(po, items=po.items),
+        }
+    return {
+        "ok": True,
+        "status": http_status,
+        "applied": applied,
+        "skipped": skipped,
         "purchase_order": _serialize_po(po, items=po.items),
     }
