@@ -184,6 +184,10 @@ export default function PipelineStatusView() {
     };
 
     localStorage.setItem('pipelineNavigationContext', JSON.stringify(navigationContext));
+    // Save current scroll position so we can restore it when the user comes back
+    try {
+      sessionStorage.setItem(`pipelineScrollY:${returnPath}`, String(window.scrollY));
+    } catch {}
     return `/product/${productId}/pipeline-details?from=filter`;
   };
 
@@ -216,6 +220,24 @@ export default function PipelineStatusView() {
   }, [slug, page, sortBy, sortDir, appliedFilters]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Restore scroll position after returning from product detail. We wait for
+  // products to be rendered so the page has its full height before scrolling.
+  useEffect(() => {
+    if (loading) return;
+    if (!slug) return;
+    const queryString = searchParams.toString();
+    const returnPath = `/pipeline/${slug}${queryString ? `?${queryString}` : ''}`;
+    const key = `pipelineScrollY:${returnPath}`;
+    const saved = sessionStorage.getItem(key);
+    if (saved == null) return;
+    const y = parseInt(saved, 10);
+    if (!Number.isNaN(y)) {
+      // Defer to next frame so layout is fully committed
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'auto' }));
+    }
+    sessionStorage.removeItem(key);
+  }, [loading, slug, searchParams]);
 
   const handleSort = (key: string) => {
     let nextDir: 'asc' | 'desc';
