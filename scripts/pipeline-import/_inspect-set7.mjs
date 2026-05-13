@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+const ids = [3404636,3404368,3404357,3404317,3404286,3404174,2914532,2302495,2299640,2246287,1826498,1639383];
+const p = JSON.parse(fs.readFileSync('data/grandia-pipeline.json','utf8'));
+const set7 = p['Set 7 mix'];
+const arr = Array.isArray(set7) ? set7 : (set7.lines || set7.rows || []);
+console.log('Set 7 mix parsed type:', Array.isArray(set7)?'array':'object', 'count:', arr.length);
+if (!Array.isArray(set7)) console.log('top-level keys:', Object.keys(set7));
+console.log('Sample line keys:', Object.keys(arr[0]||{}));
+console.log('First 3:', JSON.stringify(arr.slice(0,3), null, 2));
+const idKeys = ['product_id','id','productId','sku','original_id'];
+const getId = l => { for (const k of idKeys) if (l[k]!=null) return Number(l[k])||l[k]; return null; };
+const present = arr.filter(l => ids.includes(Number(getId(l))));
+console.log('\nOf the 12 requested IDs, in parsed Set 7 mix:', present.length);
+console.log('Missing from parser:', ids.filter(id => !arr.some(l => Number(getId(l))===id)));
+console.log('Present details:'); console.log(JSON.stringify(present, null, 2));
+console.log('\nAll parsed product IDs in Set 7 mix:');
+console.log(arr.map(l => getId(l)).join(','));

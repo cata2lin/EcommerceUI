@@ -1,0 +1,23 @@
+[
+  {
+    "tab": "Set 1.1",
+    "id": "53066",
+    "sku": "GD-BU-53066",
+    "title": "Mini Mixer electric cu acumulator, pentru a face spuma de lapte, frappe, cappucino sau mixat oua, brat otel inoxidabil, incarcare USB, Negru - | atMag.ro",
+    "parser": "atmag.ro",
+    "qty": "50",
+    "cogs_usd": "2.3",
+    "transport_usd": "0.13",
+    "landed_usd": "2.5",
+    "price_lei": "29",
+    "m3_unit": "0.0013",
+    "pipeline_status_sheet": "Approved",
+    "purchased": true,
+    "db_exists": false,
+    "db_original_id": null,
+    "db_name": null,
+    "db_pipeline_status": null,
+    "db_shortlisted": false,
+    "existing_po_lines": 0
+  }
+]

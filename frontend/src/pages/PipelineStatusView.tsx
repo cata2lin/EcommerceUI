@@ -2,8 +2,8 @@
  * PipelineStatusView — Products at a specific pipeline stage with
  * status tabs, comprehensive filters, financial KPIs, and Excel export.
  */
-import { useState, useCallback, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchPipelineStatus, exportPipelineExcel, fetchConfig } from '../api';
 
 const STATUSES = [
@@ -69,9 +69,23 @@ const SORT_COLUMNS: { key: string; label: string; sortable: boolean }[] = [
   { key: 'margin', label: 'Margin', sortable: true },
 ];
 
+// Filter keys that map to URL query params
+const FILTER_KEYS = Object.keys(emptyForm) as (keyof typeof emptyForm)[];
+
+/** Build a filter form from URLSearchParams */
+function readFiltersFromParams(sp: URLSearchParams): typeof emptyForm {
+  const out: any = { ...emptyForm };
+  for (const k of FILTER_KEYS) {
+    const v = sp.get(k);
+    if (v != null) out[k] = v;
+  }
+  return out;
+}
+
 export default function PipelineStatusView() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [products, setProducts] = useState<PipelineProduct[]>([]);
   const [total, setTotal] = useState(0);
@@ -83,14 +97,35 @@ export default function PipelineStatusView() {
   const [parsers, setParsers] = useState<FilterOption[]>([]);
   const [groups, setGroups] = useState<FilterOption[]>([]);
 
-  const [form, setForm] = useState(emptyForm);
-  const [appliedFilters, setAppliedFilters] = useState(emptyForm);
-  const [showFilters, setShowFilters] = useState(false);
+  // Derive applied filters, sort, and page from URL (browser back restores them automatically)
+  const appliedFilters = useMemo(() => readFiltersFromParams(searchParams), [searchParams]);
+  const sortBy = searchParams.get('sort_by') || 'id';
+  const sortDir: 'asc' | 'desc' = (searchParams.get('sort_dir') as 'asc' | 'desc') || 'desc';
+  const page = parseInt(searchParams.get('page') || '1', 10) || 1;
 
-  const [sortBy, setSortBy] = useState('id');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
+  // Form state (uncommitted edits) — initialized from URL, kept in sync when URL changes
+  const [form, setForm] = useState<typeof emptyForm>(() => readFiltersFromParams(searchParams));
+  const [showFilters, setShowFilters] = useState(() =>
+    Object.values(readFiltersFromParams(searchParams)).some(v => v !== '')
+  );
   const [goToPage, setGoToPage] = useState('');
+
+  // Keep the form mirror in sync if URL changes externally (e.g. back/forward)
+  useEffect(() => {
+    setForm(readFiltersFromParams(searchParams));
+  }, [searchParams]);
+
+  /** Update one or more URL params, dropping empty values. Replaces or pushes history. */
+  const updateParams = useCallback((updates: Record<string, string | number | null | undefined>, replace = false) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(updates)) {
+        if (v == null || v === '') next.delete(k);
+        else next.set(k, String(v));
+      }
+      return next;
+    }, { replace });
+  }, [setSearchParams]);
 
   // Lightbox for full-size product image
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -116,37 +151,44 @@ export default function PipelineStatusView() {
   };
 
   const applyFilters = () => {
-    setAppliedFilters({ ...form });
-    setPage(1);
+    const updates: Record<string, string> = {};
+    for (const k of FILTER_KEYS) updates[k] = form[k] || '';
+    updateParams({ ...updates, page: 1 });
   };
 
   const clearFilters = () => {
     setForm(emptyForm);
-    setAppliedFilters(emptyForm);
-    setPage(1);
+    const cleared: Record<string, null> = {};
+    for (const k of FILTER_KEYS) cleared[k] = null;
+    updateParams({ ...cleared, page: 1 });
   };
 
   // ─── Navigation Context Setup ──────────────────────────────────────────
   const setupNavigationContext = (productId: number) => {
     const currentStatusLabel = STATUSES.find(s => s.slug === slug)?.label || slug || '';
     const filteredIds = products.map(p => p.id);
-    const filterInfo = Object.values(appliedFilters).some(v => v !== '') 
-      ? `${slug} filtered` 
+    const filterInfo = Object.values(appliedFilters).some(v => v !== '')
+      ? `${slug} filtered`
       : slug;
-    
+
+    // Preserve filters/sort/page in the return path so back navigation restores the view
+    const queryString = searchParams.toString();
+    const returnPath = `/pipeline/${slug}${queryString ? `?${queryString}` : ''}`;
+
     const navigationContext = {
       filteredIds,
       filterInfo,
       currentIndex: 0, // Will be updated in ProductPipeline
-      returnPath: `/pipeline/${slug}`,
+      returnPath,
       returnLabel: `Pipeline: ${currentStatusLabel}`,
     };
-    
+
     localStorage.setItem('pipelineNavigationContext', JSON.stringify(navigationContext));
     return `/product/${productId}/pipeline-details?from=filter`;
   };
 
-  useEffect(() => { setPage(1); setForm(emptyForm); setAppliedFilters(emptyForm); }, [slug]);
+  // When the user clicks a different status tab, also reset filters/page for that tab
+  // (kept as a no-op for same slug; URL params are scoped per-route navigation anyway).
 
   const loadData = useCallback(async () => {
     if (!slug) return;
@@ -176,9 +218,10 @@ export default function PipelineStatusView() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleSort = (key: string) => {
-    if (sortBy === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortBy(key); setSortDir('desc'); }
-    setPage(1);
+    let nextDir: 'asc' | 'desc';
+    if (sortBy === key) nextDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else nextDir = 'desc';
+    updateParams({ sort_by: key, sort_dir: nextDir, page: 1 });
   };
 
   const sortIndicator = (key: string) => {
@@ -215,7 +258,7 @@ export default function PipelineStatusView() {
   const handleGoTo = () => {
     const target = parseInt(goToPage, 10);
     if (target >= 1 && target <= totalPages) {
-      setPage(target);
+      updateParams({ page: target });
       setGoToPage('');
     }
   };
@@ -236,11 +279,11 @@ export default function PipelineStatusView() {
     }
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 'var(--spacing-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+        <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => updateParams({ page: page - 1 })}>← Prev</button>
         <div style={{ display: 'flex', gap: 2 }}>
           {pages.map((p, i) => (
             typeof p === 'number' ? (
-              <button key={i} className={`btn btn-sm ${p === page ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPage(p)} style={{ minWidth: 32, padding: '4px 8px' }}>{p}</button>
+              <button key={i} className={`btn btn-sm ${p === page ? 'btn-primary' : 'btn-ghost'}`} onClick={() => updateParams({ page: p })} style={{ minWidth: 32, padding: '4px 8px' }}>{p}</button>
             ) : (
               <span key={i} style={{ padding: '0 4px', color: 'var(--color-text-muted)' }}>…</span>
             )
@@ -255,7 +298,7 @@ export default function PipelineStatusView() {
             style={{ width: 64, fontSize: '0.75rem', padding: '4px 8px', minHeight: 28 }} />
           <button className="btn btn-ghost btn-sm" onClick={handleGoTo}>Go</button>
         </div>
-        <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+        <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => updateParams({ page: page + 1 })}>Next →</button>
       </div>
     );
   };

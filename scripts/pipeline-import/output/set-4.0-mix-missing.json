@@ -1,0 +1,23 @@
+[
+  {
+    "tab": "Set 4.0 Mix",
+    "id": "53072",
+    "sku": "GD-CS-53072",
+    "title": null,
+    "parser": "atmag.ro",
+    "qty": "40",
+    "cogs_usd": "4.1",
+    "transport_usd": "1.1",
+    "landed_usd": "5.34",
+    "price_lei": "84.99",
+    "m3_unit": null,
+    "pipeline_status_sheet": null,
+    "purchased": false,
+    "db_exists": false,
+    "db_original_id": null,
+    "db_name": null,
+    "db_pipeline_status": null,
+    "db_shortlisted": false,
+    "existing_po_lines": 0
+  }
+]

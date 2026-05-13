@@ -1,0 +1,102 @@
+// Set 8-Summer — focused analyzer (split: Confirmed = green, Hold = non-green).
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+
+const TAB = 'Set 8-Summer';
+const SLUG = 'set-8-summer';
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname));
+const PARSED = path.join(ROOT, 'data/grandia-pipeline.json');
+const OUTDIR = path.join(ROOT, 'output');
+const PGURI = 'postgresql://scraper:Scraper123%23@38.242.226.83:5432/test';
+
+const all = JSON.parse(fs.readFileSync(PARSED, 'utf8'));
+const rows = all[TAB];
+if (!rows) { console.error(`Tab not found: ${TAB}`); process.exit(1); }
+
+console.log(`=== ${TAB} ===`);
+console.log(`Total rows: ${rows.length}`);
+console.log(`Purchased (green QTY): ${rows.filter(r => r._purchased).length}`);
+console.log(`Hold (non-green):      ${rows.filter(r => !r._purchased).length}`);
+
+const noId = rows.filter(r => !r._numericId);
+console.log(`Rows with NO numeric ID: ${noId.length}`);
+
+const ids = [...new Set(rows.map(r => r._numericId).filter(Boolean).map(Number))];
+const sql = `
+WITH input(id) AS (VALUES ${ids.map(i => `(${i})`).join(',')})
+SELECT i.id,
+  CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END,
+  p.original_id, p.name, p.pipeline_status,
+  COALESCE((SELECT COUNT(*) FROM purchase_order_items poi WHERE poi.product_id=i.id),0)
+FROM input i LEFT JOIN products p ON p.id = i.id ORDER BY i.id;`.replace(/\n/g,' ');
+
+const out = execSync(`psql "${PGURI}" -At -F '|' -c "${sql}"`, { encoding: 'utf8' });
+const byId = new Map();
+for (const ln of out.trim().split('\n')) {
+  const [id, exists, original_id, name, pipeline_status, poCount] = ln.split('|');
+  byId.set(id, { exists: exists === '1', original_id, name, pipeline_status, poCount: parseInt(poCount, 10) });
+}
+
+const enriched = rows.map(r => {
+  const m = byId.get(String(r._numericId)) || {};
+  return {
+    tab: TAB,
+    id: r._numericId, sku: r.SKU, title: r.Title, parser: r.Parser,
+    qty: r.QTY, cogs_usd: r.Cogs, transport_usd: r.TransportUSD,
+    landed_usd: r.LandedUSD, price_lei: r.PriceLei, m3_unit: r.M3Unit,
+    purchased: r._purchased,
+    db_exists: !!m.exists, db_original_id: m.original_id || null,
+    db_name: m.name || null, db_pipeline_status: m.pipeline_status || null,
+    existing_po_lines: m.poCount || 0,
+  };
+});
+
+const missing = enriched.filter(r => !r.db_exists);
+const alreadyInPo = enriched.filter(r => r.db_exists && r.existing_po_lines > 0);
+const importable = enriched.filter(r => r.db_exists && r.existing_po_lines === 0);
+const confirmed = importable.filter(r => r.purchased);
+const hold = importable.filter(r => !r.purchased);
+
+console.log(`\n--- Buckets ---`);
+console.log(`Missing from products:    ${missing.length}`);
+console.log(`Already on existing PO:   ${alreadyInPo.length}`);
+console.log(`To import — CONFIRMED:    ${confirmed.length}`);
+console.log(`To import — HOLD:         ${hold.length}`);
+
+function num(v) { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; }
+function summarize(label, list) {
+  let q = 0, cost = 0;
+  for (const r of list) {
+    const qq = Math.round(num(r.qty) ?? 0);
+    const unit = (num(r.cogs_usd)??0) + (num(r.transport_usd)??0);
+    q += qq; cost += unit * qq;
+  }
+  console.log(`  ${label}: rows=${list.length} qty_sum=${q} est_cost_usd=${cost.toFixed(2)}`);
+}
+console.log('\nPlanned PO totals:');
+summarize('CONFIRMED', confirmed);
+summarize('HOLD     ', hold);
+
+const dupCounts = {};
+for (const r of importable) dupCounts[r.id] = (dupCounts[r.id]||0)+1;
+const dups = Object.entries(dupCounts).filter(([,c])=>c>1);
+console.log(`\nDuplicate product IDs across importable: ${dups.length}`);
+for (const [id,c] of dups) {
+  const drs = enriched.filter(r=>r.id===id);
+  console.log(`  id=${id} count=${c}`);
+  for (const d of drs) console.log(`    qty=${d.qty} purchased=${d.purchased} | ${(d.title||d.db_name||'').slice(0,80)}`);
+}
+
+console.log(`\n--- Missing from DB (${missing.length}) ---`);
+for (const r of missing) console.log(`  id=${r.id} sku=${r.sku} purchased=${r.purchased} qty=${r.qty} | ${(r.title||'').slice(0,80)}`);
+
+if (alreadyInPo.length) {
+  console.log(`\n--- Already on existing PO (${alreadyInPo.length}) ---`);
+  for (const r of alreadyInPo) console.log(`  id=${r.id} po_lines=${r.existing_po_lines} | ${(r.db_name||'').slice(0,80)}`);
+}
+
+fs.mkdirSync(OUTDIR, { recursive: true });
+fs.writeFileSync(path.join(OUTDIR, `${SLUG}-enriched.json`), JSON.stringify(enriched, null, 2));
+fs.writeFileSync(path.join(OUTDIR, `${SLUG}-missing.json`), JSON.stringify(missing, null, 2));
+console.log(`\nOutput written to ${OUTDIR}/${SLUG}-*.json`);
